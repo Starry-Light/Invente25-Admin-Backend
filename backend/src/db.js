@@ -1,3 +1,5 @@
+// This is just to have a connection pool so that we don't have to create a new connection every time we query the DB
+
 require('dotenv').config();
 const { Pool } = require('pg');
 
@@ -7,5 +9,5 @@ const pool = new Pool({
 
 module.exports = {
   query: (text, params) => pool.query(text, params),
-  getClient: () => pool.connect()
+  getClient: () => pool.connect() // in case we need a transaction
 };

@@ -15,8 +15,8 @@ CREATE TABLE departments ( -- can probably add another migration script to popul
 
 CREATE TABLE events ( -- same goes for this too
   id SERIAL PRIMARY KEY, 
-  department_id INT REFERENCES departments(id),
   name TEXT NOT NULL,
+  department_id INT REFERENCES departments(id),
   registrations INT DEFAULT 0, -- coz why not? maybe we can remove later or just not use
   created_at TIMESTAMPTZ DEFAULT now()
 );

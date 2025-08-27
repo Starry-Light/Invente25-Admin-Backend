@@ -1,0 +1,30 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: invente25
+      POSTGRES_USER: invente25
+      POSTGRES_PASSWORD: invente25pw
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d # bind mount the migrations directory to the container so that it runs the migration scripts on startup only once
+
+  backend:
+    build: ./backend
+    environment:
+      - PORT=4000
+      - DATABASE_URL=postgres://invente25:invente25pw@db:5432/invente25
+      - JWT_SECRET=supersecret_jwt_here
+      - PAYMENT_VERIF_URL=http://payment-verif.local/verify-cash
+      - PAYMENT_VERIF_API_KEY=devapikey
+    ports:
+      - "4000:4000"
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/usr/src/app
+volumes:
+  db_data:

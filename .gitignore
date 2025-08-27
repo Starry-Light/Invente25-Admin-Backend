@@ -1,6 +1,5 @@
 
-# classic Node.js gitignore file
-
+tokenHelper.js
 ### Node ###
 # Logs
 logs
