@@ -12,12 +12,18 @@ export default function TopBar() {
           <Link to="/" className="hover:underline">
             Home
           </Link>
+          { user &&
+          ["volunteer", "dept_admin", "super_admin"].includes(user.role) &&
           <Link to="/scan" className="hover:underline">
             Scan
           </Link>
-          <Link to="/unverified" className="hover:underline">
+}
+          {user && 
+          ["volunteer", "dept_admin", "super_admin"].includes(user.role) && 
+          (<Link to="/unverified" className="hover:underline">
             Unverified
           </Link>
+          )}
           {/* show attendance link for relevant roles */}
           {user &&
             ["event_admin", "dept_admin", "super_admin"].includes(

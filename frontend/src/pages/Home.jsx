@@ -12,7 +12,7 @@ export default function Home() {
       title: "Scan pass",
       desc: "Scan or paste passId to view slots and assign.",
       to: "/scan",
-      roles: null,
+      roles: [  "volunteer", "dept_admin", "super_admin"],
     },
     {
       title: "Unverified",
