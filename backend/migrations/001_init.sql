@@ -13,6 +13,7 @@ CREATE TABLE departments ( -- can probably add another migration script to popul
   name TEXT UNIQUE NOT NULL
 );
 
+-- have to fetch from strapi backend
 CREATE TABLE events ( -- same goes for this too
   id SERIAL PRIMARY KEY, 
   name TEXT NOT NULL,
@@ -20,6 +21,8 @@ CREATE TABLE events ( -- same goes for this too
   registrations INT DEFAULT 0, -- coz why not? maybe we can remove later or just not use
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- maybe add a payment table later if needed (payment id can be stored here foreign key)
 
 CREATE TABLE passes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(), -- this is uuidv4 rn, gotta change to uuid7 later
@@ -45,6 +48,7 @@ CREATE TABLE admins (
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL, -- volunteer | event_admin | dept_admin | super_admin
   department_id INT NULL, --in case of dept_admin - we have to ensure they can access stats of only their dept's events
+  -- for volunteers this MUST be null - for assigning slots to work
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
