@@ -16,37 +16,53 @@ export default function AssignSlotForm({ onAssign, existingSlots = [] }) {
     const taken = new Set((existingSlots || []).map(s => Number(s.slot_no)));
     let next = 1;
     while (taken.has(next) && next <= 4) next++;
-    if (next > 4) next = 4; // default to 4 if all filled; user can change
+    if (next > 4) next = 4;
     setSlotNo(next);
   }, [existingSlots]);
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      setLoading(true);
-      setErr(null);
-      try {
-        const q = user?.department_id ? `?department_id=${user.department_id}` : '';
-        const resp = await authAxios.get(`/events${q}`);
-        const rows = resp.data.rows || [];
-        setEvents(rows);
-        if (rows.length && !eventId) {
-          setEventId(rows[0].id);
-        }
-      } catch (e) {
-        console.error('fetch events error', e);
-        setErr('Failed to load events');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEvents();
-  }, [authAxios, user, eventId]);
+ useEffect(() => {
+  const fetchEvents = async () => {
+    setLoading(true);
+    setErr(null);
+    try {
+      // Fetch all events (no department filter) — everyone can assign any event now
+      const resp = await authAxios.get(`/events`);
+      const rows = resp.data.rows || [];
+      setEvents(rows);
+    } catch (e) {
+      console.error('fetch events error', e);
+      setErr('Failed to load events');
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchEvents();
+}, [authAxios]);
 
+  // event IDs already assigned to this pass
+  const assignedEventIds = useMemo(() => new Set((existingSlots || []).map(s => Number(s.event_id))), [existingSlots]);
+
+  // filter events: by search + exclude already assigned events
   const filteredEvents = useMemo(() => {
-    if (!search) return events;
-    const q = search.trim().toLowerCase();
-    return events.filter(ev => (ev.name || '').toLowerCase().includes(q) || (ev.department_name || '').toLowerCase().includes(q));
-  }, [events, search]);
+    const q = (search || '').trim().toLowerCase();
+    return events
+      .filter(ev => !assignedEventIds.has(Number(ev.id)))
+      .filter(ev => {
+        if (!q) return true;
+        return (ev.name || '').toLowerCase().includes(q) || (ev.department_name || '').toLowerCase().includes(q);
+      });
+  }, [events, search, assignedEventIds]);
+
+  // ensure default eventId is valid and picks first available when filteredEvents changes
+  useEffect(() => {
+    if (filteredEvents.length === 0) {
+      setEventId('');
+      return;
+    }
+    if (!eventId || !filteredEvents.find(ev => String(ev.id) === String(eventId))) {
+      setEventId(String(filteredEvents[0].id));
+    }
+  }, [filteredEvents, eventId]);
 
   const handleAssign = async () => {
     setErr(null);
@@ -79,7 +95,7 @@ export default function AssignSlotForm({ onAssign, existingSlots = [] }) {
           <label className="block text-xs">Event</label>
           <select value={eventId} onChange={e => setEventId(e.target.value)} className="w-full border p-1 rounded">
             {loading && <option>Loading events...</option>}
-            {!loading && filteredEvents.length === 0 && <option>No events</option>}
+            {!loading && filteredEvents.length === 0 && <option value="">No available events</option>}
             {!loading && filteredEvents.map(ev => (
               <option key={ev.id} value={ev.id}>
                 {ev.name} {ev.department_name ? ` — ${ev.department_name}` : ''}
@@ -95,7 +111,9 @@ export default function AssignSlotForm({ onAssign, existingSlots = [] }) {
             <div className="text-xs text-gray-500">Auto picks next free slot (editable)</div>
           </div>
           <div className="flex-1">
-            <button className="px-3 py-1 bg-green-600 text-white rounded" onClick={handleAssign}>Assign</button>
+            <button className="px-3 py-1 bg-green-600 text-white rounded" onClick={handleAssign} disabled={!eventId || filteredEvents.length === 0}>
+              Assign
+            </button>
             {err && <div className="text-red-500 text-sm mt-2">{err}</div>}
           </div>
         </div>
