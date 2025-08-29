@@ -83,55 +83,80 @@ app.get('/passes', authMiddleware, requireRole(['volunteer','dept_admin','super_
 // assign slot (volunteer)
 // we use a transaction here to ensure consistency - for example
 // if the insert into slots succeeds but the update to events fails, we would have an inconsistent state
+// Assign a slot to a pass (idempotent check for duplicate event on pass)
+// Roles allowed: volunteer, dept_admin, super_admin
 app.post('/passes/:passId/slots', authMiddleware, requireRole(['volunteer','dept_admin','super_admin']), async (req, res) => {
   const { passId } = req.params;
   const { slot_no, event_id } = req.body;
-  if (!slot_no || !event_id) return res.status(400).json({ error: 'slot_no and event_id required' });
 
-  const client = await db.getClient(); // get a client for transaction
+  // basic validation
+  const slotNo = Number(slot_no);
+  const evId = Number(event_id);
+  if (!passId) return res.status(400).json({ error: 'passId required' });
+  if (!Number.isInteger(slotNo) || slotNo < 1 || slotNo > 4) return res.status(400).json({ error: 'slot_no must be integer between 1 and 4' });
+  if (!Number.isInteger(evId)) return res.status(400).json({ error: 'event_id required' });
+
+  const client = await db.getClient();
   try {
     await client.query('BEGIN');
 
-    // optional: we can lock the pass row to avoid concurrent writes but it's unlikely that such a case will happen
-    const passRes = await client.query('SELECT verified FROM passes WHERE id=$1 FOR UPDATE', [passId]);
-    if (passRes.rowCount === 0) {
+    // Verify pass exists
+    const passRow = (await client.query('SELECT id FROM passes WHERE id = $1 FOR UPDATE', [passId])).rows[0];
+    if (!passRow) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'pass not found' });
     }
 
-    // insert slot; will fail if (pass_id, slot_no) already exists because of primary key constraint
-    try {
-      await client.query(
-        `INSERT INTO slots(pass_id, slot_no, event_id, assigned_at) VALUES ($1,$2,$3,now())`,
-        [passId, slot_no, event_id]
-      );
-    } catch (err) {
-      await client.query('ROLLBACK');
-      // Likely a primary key conflict (slot already assigned)
-      return res.status(409).json({ error: 'slot already assigned or invalid slot/event' });
-    }
-
-    // increment event registration counter
-    const r = await client.query(
-      `UPDATE events SET registrations = COALESCE(registrations,0) + 1 WHERE id = $1 RETURNING registrations`,
-      [event_id]
-    );
-    if (r.rowCount === 0) {
-      // event not found or id invalid
+    // Verify event exists and fetch its id
+    const eventRow = (await client.query('SELECT id FROM events WHERE id = $1', [evId])).rows[0];
+    if (!eventRow) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'event not found' });
     }
 
+    // 1) Prevent duplicate event on same pass
+    const existingSameEvent = (await client.query(
+      'SELECT 1 FROM slots WHERE pass_id = $1 AND event_id = $2 LIMIT 1',
+      [passId, evId]
+    )).rows[0];
+    if (existingSameEvent) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'this event is already assigned to the pass' });
+    }
+
+    // 2) Ensure slot number for this pass is free
+    const existingSlotNo = (await client.query(
+      'SELECT 1 FROM slots WHERE pass_id = $1 AND slot_no = $2 LIMIT 1',
+      [passId, slotNo]
+    )).rows[0];
+    if (existingSlotNo) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'slot number already used for this pass' });
+    }
+
+    // Insert slot
+    const insertRes = await client.query(
+      `INSERT INTO slots (pass_id, slot_no, event_id, attended, assigned_at)
+       VALUES ($1, $2, $3, false, now())
+       RETURNING pass_id, slot_no, event_id, attended, assigned_at`,
+      [passId, slotNo, evId]
+    );
+
+    // increment events.registrations
+    await client.query('UPDATE events SET registrations = registrations + 1 WHERE id = $1', [evId]);
+
     await client.query('COMMIT');
-    res.status(201).json({ ok: true });
+
+    return res.json({ ok: true, slot: insertRes.rows[0] });
   } catch (err) {
-    console.error(err);
-    await client.query('ROLLBACK');
-    res.status(500).json({ error: 'server error' });
+    try { await client.query('ROLLBACK'); } catch (e) {}
+    console.error('assign slot error', err);
+    return res.status(500).json({ error: 'server error' });
   } finally {
     client.release();
   }
 });
+
 
 // this is the one that needs workkkkkkkkkkkkkkkkkkkkkkkk. need to coordinate with payment-verification service
 // volunteer marks cash as paid -> call payment-verification service (idempotent)
@@ -227,6 +252,7 @@ app.post('/passes/:passId/attendance', authMiddleware, requireRole(['event_admin
 
 // ---------- Analytics endpoints ----------
 // Department analytics: accessible to dept_admin (for their dept) and super_admin
+// AI generated af rn, will test and refine later
 app.get('/analytics/department/:id', authMiddleware, requireRole(['dept_admin','super_admin']), async (req, res) => {
   const deptId = Number(req.params.id);
   if (Number.isNaN(deptId)) return res.status(400).json({ error: 'invalid department id' });
