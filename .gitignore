@@ -10,6 +10,11 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
+/loadtest/*.csv
+/loadtest/report*.json
+/loadtest/report*.html
+loadtest
+
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
