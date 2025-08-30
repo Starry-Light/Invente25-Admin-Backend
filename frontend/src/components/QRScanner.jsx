@@ -97,9 +97,9 @@ export default function QRScanner({ onResult, fps = 10, qrbox = 250 }) {
   };
 
   return (
-    <div className="space-y-2">
-      <div id={elementIdRef.current} style={{ width: '100%' }} />
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-4 w-full max-w-xl mx-auto">
+      <div id={elementIdRef.current} className="w-full aspect-square md:aspect-video max-h-[60vh]" />
+      <div className="flex flex-wrap items-center justify-center gap-3">
         {running ? (
           <button className="px-2 py-1 bg-yellow-500 text-white rounded text-sm" onClick={handleStop}>Stop Scanner</button>
         ) : (

@@ -21,9 +21,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-16 p-6 bg-white shadow rounded">
-      <h2 className="text-2xl mb-4">Login</h2>
-      <form onSubmit={onSubmit} className="space-y-3">
+    <div className="max-w-md mx-auto mt-8 md:mt-16 m-4 p-6 bg-white shadow rounded">
+      <h2 className="text-xl md:text-2xl font-semibold mb-6">Login to Invente25 Admin</h2>
+      <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <label className="block text-sm">Email</label>
           <input

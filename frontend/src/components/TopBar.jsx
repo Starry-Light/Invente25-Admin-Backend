@@ -5,10 +5,10 @@ import { useAuth } from "../hooks/useAuth";
 export default function TopBar() {
   const { user, logout } = useAuth();
   return (
-    <div className="flex items-center justify-between bg-white shadow px-4 py-3">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-white shadow px-4 py-3">
+      <div className="flex flex-col md:flex-row md:items-center gap-4 w-full md:w-auto">
         <h1 className="text-xl font-semibold">Invente25 — Admin Dashboard</h1>
-        <nav className="space-x-2 text-sm text-gray-600">
+        <nav className="flex flex-wrap gap-2 text-sm text-gray-600 mt-2 md:mt-0">
           <Link to="/" className="hover:underline">
             Home
           </Link>

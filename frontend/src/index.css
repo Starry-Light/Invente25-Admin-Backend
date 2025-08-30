@@ -4,3 +4,47 @@
 
 
 html, body, #root { height: 100%; }
+
+/* responsive QR scanner container */
+.qr-wrapper {
+  width: 100%;
+  max-width: 520px;      /* reasonable max on tablets/desktop */
+  margin-left: auto;
+  margin-right: auto;
+  aspect-ratio: 3 / 4;   /* portrait-ish: camera view for QR scanning */
+  max-height: 72vh;      /* never take more than viewport on small screens */
+  overflow: hidden;
+  border-radius: 8px;
+  background: #111;      /* fallback if camera delays */
+}
+
+/* html5-qrcode injects video/canvas — make them responsive */
+.qr-wrapper video,
+.qr-wrapper canvas,
+.qr-wrapper img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+/* ensure the element that html5-qrcode writes into doesn't force duplicated boxes */
+.qr-wrapper > div,
+.qr-wrapper > iframe {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* touch-friendly buttons on mobile */
+.btn-touch {
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+/* tighten up spacing for mobile */
+@media (max-width: 640px) {
+  .page-padding {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}

@@ -42,11 +42,11 @@ export default function Home() {
   });
 
   return (
-    <div className="p-6">
-      <h2 className="text-xl font-semibold mb-2">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      <h2 className="text-xl md:text-2xl font-semibold mb-2">
         Welcome{user ? `, ${user.email}` : ""}
       </h2>
-      <p className="text-sm text-gray-600">
+      <p className="text-sm md:text-base text-gray-600">
         Use the nav to scan tickets, verify cash payments, and manage
         attendance.
       </p>
