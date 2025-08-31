@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# Add curl for healthchecks
+RUN apk --no-cache add curl
+
 WORKDIR /usr/src/app
 
 COPY package*.json ./

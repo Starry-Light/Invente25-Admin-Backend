@@ -55,7 +55,7 @@ async function syncEvents() {
     const { data } = responseData;
     
     // Filter technical events
-    console.log('Processing events:', data);
+    // console.log('Processing events:', data);
     
     const technicalEvents = data.filter(event => {
       if (!event || !event.attributes || !event.attributes.class) {
@@ -98,7 +98,7 @@ async function syncEvents() {
           `,
           [event.id, event.attributes.name, deptResult.rows[0].id]
         );
-        console.log(`Synced event: ${event.attributes.name}`);
+        console.log(`Synced event: ${event.attributes.name} - ${event.attributes.department}`);
       } catch (error) {
         console.error(`Error syncing event ${event.attributes.name}:`, error);
       }
