@@ -50,22 +50,56 @@ router.post('/:passId/slots', authMiddleware, requireRole(['volunteer','dept_adm
   try {
     await client.query('BEGIN');
 
-    // Verify pass exists
+    // Verify pass exists (lock row to serialize concurrent ops for this pass)
     const passRow = (await client.query('SELECT id FROM passes WHERE id = $1 FOR UPDATE', [passId])).rows[0];
     if (!passRow) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'pass not found' });
     }
 
-    // Verify event exists
-    const eventRow = (await client.query('SELECT id FROM events WHERE id = $1', [evId])).rows[0];
+    // Verify event exists and get its department_id
+    const eventRow = (await client.query('SELECT id, department_id FROM events WHERE id = $1', [evId])).rows[0];
     if (!eventRow) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'event not found' });
     }
 
+    const eventDept = eventRow.department_id === null ? null : Number(eventRow.department_id);
+
+    // Enforce volunteer scoping:
+    // - central volunteer => req.user.role === 'volunteer' && req.user.department_id == null -> allowed all events
+    // - dept volunteer => req.user.role === 'volunteer' && req.user.department_id != null -> allowed only events in same dept
+    if (req.user.role === 'volunteer') {
+      const userDept = (req.user.department_id === null || typeof req.user.department_id === 'undefined')
+        ? null
+        : Number(req.user.department_id);
+
+      if (userDept !== null) {
+        // dept volunteer — must match event's department
+        if (eventDept === null || userDept !== eventDept) {
+          await client.query('ROLLBACK');
+          return res.status(403).json({ error: 'forbidden: volunteer can only assign events from their department' });
+        }
+      }
+      // if userDept === null -> central volunteer -> allowed
+    }
+
+    // Enforce dept_admin scoping: must have department_id set and match event's department
+    if (req.user.role === 'dept_admin') {
+      const userDept = (req.user.department_id === null || typeof req.user.department_id === 'undefined')
+        ? null
+        : Number(req.user.department_id);
+      if (userDept === null) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'forbidden: dept_admin has no department assigned' });
+      }
+      if (eventDept === null || userDept !== eventDept) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'forbidden: dept_admin can only assign events from their department' });
+      }
+    }
+
     // Prevent duplicate event on same pass
-    // so many checks istg
     const existingSameEvent = (await client.query(
       'SELECT 1 FROM slots WHERE pass_id = $1 AND event_id = $2 LIMIT 1',
       [passId, evId]
@@ -76,7 +110,6 @@ router.post('/:passId/slots', authMiddleware, requireRole(['volunteer','dept_adm
     }
 
     // Ensure slot number for this pass is free
-    // idempotent check
     const existingSlotNo = (await client.query(
       'SELECT 1 FROM slots WHERE pass_id = $1 AND slot_no = $2 LIMIT 1',
       [passId, slotNo]
@@ -87,9 +120,6 @@ router.post('/:passId/slots', authMiddleware, requireRole(['volunteer','dept_adm
     }
 
     // Insert slot
-    // finally
-    // the case of simultaneous requests is handled by the unique constraint on (pass_id, event_id) and (pass_id, slot_no)
-    // we lock the pass row at the start of the transaction to serialize concurrent requests for same
     const insertRes = await client.query(
       `INSERT INTO slots (pass_id, slot_no, event_id, attended, assigned_at)
        VALUES ($1, $2, $3, false, now())
@@ -111,6 +141,7 @@ router.post('/:passId/slots', authMiddleware, requireRole(['volunteer','dept_adm
     client.release();
   }
 });
+
 
 // mark_cash_paid endpoint (volunteer marks cash and we call payment-verification service)
 router.post('/:passId/mark-cash-paid', authMiddleware, requireRole(['volunteer','dept_admin','super_admin']), async (req, res) => {
@@ -156,7 +187,7 @@ router.post('/:passId/mark-cash-paid', authMiddleware, requireRole(['volunteer',
     // 3) update local DB only if still unverified (avoid race)
     const updateRes = await db.query('UPDATE passes SET verified = true WHERE id = $1 AND verified = false RETURNING id', [passId]);
     if (updateRes.rowCount === 0) {
-      // another process marked it verified concurrently — treat as success
+      // another process marked it verified concurrently — treat as success // won't really happen
       return res.json({ ok: true, message: 'already verified by another process' });
     }
 
