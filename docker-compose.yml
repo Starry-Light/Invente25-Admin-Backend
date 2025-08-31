@@ -20,6 +20,9 @@ services:
       - JWT_SECRET=supersecret_jwt_here
       - PAYMENT_VERIF_URL=http://payment-verif.local/verify-cash
       - PAYMENT_VERIF_API_KEY=devapikey
+      - SYNC_EVENTS_ENABLED=true
+      - SYNC_EVENTS_CRON=*/2 * * * * # every 2 minutes and once per startup
+      - EVENTS_API_URL=https://ssnsnucinvente.com/api/events
     ports:
       - "4000:4000"
     depends_on:
