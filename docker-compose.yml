@@ -35,6 +35,8 @@ services:
       - SYNC_EVENTS_ENABLED=true
       - SYNC_EVENTS_CRON=*/2 * * * * # every 2 minutes and once per startup
       - EVENTS_API_URL=https://ssnsnucinvente.com/api/events
+      - PAYMENT_SERVICE_URL=http://localhost:8080/api/payment
+      - RECEIPT_SERVICE_URL=http://localhost:8080/api/receipt
     ports:
       - "4000:4000"
     depends_on:

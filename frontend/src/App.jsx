@@ -9,7 +9,6 @@ import { AuthProvider } from "./hooks/useAuth";
 import TopBar from "./components/TopBar";
 import Home from "./pages/Home";
 import ScanPage from "./pages/Scan";
-import UnverifiedPage from "./pages/Unverified";
 import AttendancePage from "./pages/Attendance";
 import AnalyticsPage from "./pages/Analytics";
 import LoginPage from "./pages/Login";
@@ -56,14 +55,7 @@ export default function App() {
                 </RequireAuth>
               }
             />
-            <Route
-              path="/unverified"
-              element={
-                <RequireAuth>
-                  <UnverifiedPage />
-                </RequireAuth>
-              }
-            />
+
             <Route
               path="/attendance"
               element={

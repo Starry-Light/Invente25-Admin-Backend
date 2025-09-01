@@ -18,12 +18,7 @@ export default function TopBar() {
             Scan
           </Link>
 }
-          {user && 
-          ["volunteer", "dept_admin", "super_admin"].includes(user.role) && 
-          (<Link to="/unverified" className="hover:underline">
-            Unverified
-          </Link>
-          )}
+
           {/* show attendance link for relevant roles */}
           {user &&
             ["event_admin", "dept_admin", "super_admin"].includes(
@@ -36,6 +31,11 @@ export default function TopBar() {
           {user && ["dept_admin", "super_admin"].includes(user.role) && (
             <Link to="/analytics" className="hover:underline">
               Analytics
+            </Link>
+          )}
+          {user && ["volunteer", "dept_admin", "super_admin"].includes(user.role) && (
+            <Link to="/cash-registration" className="hover:underline">
+              Cash Registration
             </Link>
           )}
         </nav>
