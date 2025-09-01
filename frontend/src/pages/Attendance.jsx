@@ -90,22 +90,22 @@ export default function AttendancePage() {
     load(normalized)
   }, [load])
 
-  const markAtt = async (event_id, attended) => {
-    if (!pass || !pass.id) {
+  const markAtt = async (slot_no) => {
+    if (!pass || !pass.pass_id) {
       setMsg('No pass loaded')
       return
     }
     setMsg(null)
-    setMarking(prev => ({ ...prev, [event_id]: true }))
+    setMarking(prev => ({ ...prev, [slot_no]: true }))
     try {
-      await authAxios.post(`/passes/${pass.id}/attendance`, { event_id, attended })
+      await authAxios.post(`/scan/${pass.pass_id}/attend`, { slot_no })
       // reload slots for latest state
-      await load(pass.id)
+      await load(pass.pass_id)
     } catch (err) {
       setMsg(err?.response?.data?.error || String(err))
       console.error('markAtt error', err)
     } finally {
-      setMarking(prev => ({ ...prev, [event_id]: false }))
+      setMarking(prev => ({ ...prev, [slot_no]: false }))
     }
   }
 
@@ -145,10 +145,9 @@ export default function AttendancePage() {
 
           {pass ? (
             <div className="bg-white p-4 rounded shadow">
-              <h3 className="font-semibold break-words">Pass: {pass.id}</h3>
+              <h3 className="font-semibold break-words">Pass: {pass.pass_id}</h3>
               <p className="text-sm text-gray-600">
-                Owner: {pass.user_email || '—'}{' '}
-                {pass.payment_method ? `— Payment: ${pass.payment_method}` : ''} — Verified: {pass.verified ? 'Yes' : 'No'}
+                Owner: {pass.user_email || '—'}
               </p>
 
               <div className="mt-4">
@@ -164,21 +163,13 @@ export default function AttendancePage() {
                       </div>
 
                       <div className="flex gap-2">
-                        {!s.attended ? (
+                        {!s.attended && (
                           <button
                             className="px-3 py-1 bg-green-600 text-white rounded"
-                            onClick={() => markAtt(s.event_id, true)}
-                            disabled={Boolean(marking[s.event_id])}
+                            onClick={() => markAtt(s.slot_no)}
+                            disabled={Boolean(marking[s.slot_no])}
                           >
-                            {marking[s.event_id] ? 'Marking...' : 'Mark Present'}
-                          </button>
-                        ) : (
-                          <button
-                            className="px-3 py-1 bg-yellow-600 text-white rounded"
-                            onClick={() => markAtt(s.event_id, false)}
-                            disabled={Boolean(marking[s.event_id])}
-                          >
-                            {marking[s.event_id] ? 'Updating...' : 'Unmark'}
+                            {marking[s.slot_no] ? 'Marking...' : 'Mark Present'}
                           </button>
                         )}
                       </div>

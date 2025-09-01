@@ -13,6 +13,7 @@ const scanRouter = require('./routes/scan');
 const passesRouter = require('./routes/passes');
 const eventsRouter = require('./routes/events');
 const analyticsRouter = require('./routes/analytics');
+const cashRegistrationRouter = require('./routes/cash-registration');
 
 const app = express();
 app.use(bodyParser.json());
@@ -31,6 +32,7 @@ app.use('/', scanRouter);           // scan routes e.g. GET /scan/:passId
 app.use('/passes', passesRouter);   // passes and slot management
 app.use('/events', eventsRouter);   // events listing
 app.use('/analytics', analyticsRouter); // analytics
+app.use('/cash-registration', cashRegistrationRouter); // cash registration endpoint
 
 app.listen(PORT, () => {
   console.log(`Invente25 admin backend listening on ${PORT}`);

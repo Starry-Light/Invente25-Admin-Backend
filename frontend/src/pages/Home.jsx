@@ -32,6 +32,12 @@ export default function Home() {
       to: "/analytics",
       roles: ["dept_admin", "super_admin"],
     },
+    {
+      title: "Cash Registration",
+      desc: "Register participants and collect cash payments.",
+      to: "/cash-registration",
+      roles: ["volunteer", "dept_admin", "super_admin"],
+    },
   ];
 
   // filter based on role

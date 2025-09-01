@@ -46,7 +46,7 @@ export default function AssignSlotForm({ onAssign, existingSlots = [] }) {
   const filteredEvents = useMemo(() => {
     const q = (search || '').trim().toLowerCase();
     return events
-      .filter(ev => !assignedEventIds.has(Number(ev.id)))
+      .filter(ev => !assignedEventIds.has(Number(ev.external_id)))
       .filter(ev => {
         if (!q) return true;
         return (ev.name || '').toLowerCase().includes(q) || (ev.department_name || '').toLowerCase().includes(q);
@@ -59,8 +59,8 @@ export default function AssignSlotForm({ onAssign, existingSlots = [] }) {
       setEventId('');
       return;
     }
-    if (!eventId || !filteredEvents.find(ev => String(ev.id) === String(eventId))) {
-      setEventId(String(filteredEvents[0].id));
+    if (!eventId || !filteredEvents.find(ev => String(ev.external_id) === String(eventId))) {
+      setEventId(String(filteredEvents[0].external_id));
     }
   }, [filteredEvents, eventId]);
 
@@ -97,7 +97,7 @@ export default function AssignSlotForm({ onAssign, existingSlots = [] }) {
             {loading && <option>Loading events...</option>}
             {!loading && filteredEvents.length === 0 && <option value="">No available events</option>}
             {!loading && filteredEvents.map(ev => (
-              <option key={ev.id} value={ev.id}>
+              <option key={ev.external_id} value={ev.external_id}>
                 {ev.name} {ev.department_name ? ` — ${ev.department_name}` : ''}
               </option>
             ))}

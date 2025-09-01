@@ -10,3 +10,15 @@ export function createApi(token) {
   });
   return instance;
 }
+
+// Create a default instance that uses token from localStorage
+const defaultApi = createApi(localStorage.getItem('token'));
+
+// Update token when it changes
+window.addEventListener('storage', (e) => {
+  if (e.key === 'token') {
+    Object.assign(defaultApi, createApi(e.newValue));
+  }
+});
+
+export default defaultApi;

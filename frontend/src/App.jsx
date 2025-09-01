@@ -13,6 +13,7 @@ import UnverifiedPage from "./pages/Unverified";
 import AttendancePage from "./pages/Attendance";
 import AnalyticsPage from "./pages/Analytics";
 import LoginPage from "./pages/Login";
+import CashRegistrationPage from "./pages/CashRegistration";
 
 function RequireAuth({ children, roles }) {
   // simple guard in App; more advanced guard is implemented in pages as needed
@@ -78,6 +79,14 @@ export default function App() {
               element={
                 <RequireAuth roles={["dept_admin", "super_admin"]}>
                   <AnalyticsPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/cash-registration"
+              element={
+                <RequireAuth roles={["volunteer", "dept_admin", "super_admin"]}>
+                  <CashRegistrationPage />
                 </RequireAuth>
               }
             />

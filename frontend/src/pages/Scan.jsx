@@ -61,13 +61,13 @@ export default function ScanPage() {
 
   const assignSlot = async (slot_no, event_id) => {
     setMsg(null);
-    if (!pass || !pass.id) {
+    if (!pass || !pass.pass_id) {
       setMsg('No pass loaded');
       return;
     }
     try {
-      await authAxios.post(`/passes/${pass.id}/slots`, { slot_no, event_id });
-      await doScan(pass.id);
+      await authAxios.post(`/scan/${pass.pass_id}/assign`, { slot_no, event_id });
+      await doScan(pass.pass_id);
     } catch (err) {
       setMsg(err?.response?.data?.error || String(err));
       console.error('assignSlot error', err);
@@ -75,7 +75,7 @@ export default function ScanPage() {
   };
 
   const deleteSlot = async (slot_no) => {
-    if (!pass || !pass.id) {
+    if (!pass || !pass.pass_id) {
       setMsg('No pass loaded');
       return;
     }
@@ -83,8 +83,8 @@ export default function ScanPage() {
     if (!confirmed) return;
     setMsg(null);
     try {
-      await authAxios.delete(`/passes/${pass.id}/slots/${slot_no}`);
-      await doScan(pass.id);
+      await authAxios.delete(`/scan/${pass.pass_id}/slot/${slot_no}`);
+      await doScan(pass.pass_id);
     } catch (err) {
       setMsg(err?.response?.data?.error || String(err));
       console.error('deleteSlot error', err);
@@ -112,8 +112,8 @@ export default function ScanPage() {
           {msg && <div className="text-red-500 mb-3">{msg}</div>}
           {pass ? (
             <div className="bg-white p-4 rounded shadow">
-              <h3 className="font-semibold break-words">Pass: {pass.id}</h3>
-              <p className="text-sm text-gray-600">Owner: {pass.user_email || '—'} {pass.payment_method ? `— Payment: ${pass.payment_method}` : ''} — Verified: {pass.verified ? 'Yes' : 'No'}</p>
+              <h3 className="font-semibold break-words">Pass: {pass.pass_id}</h3>
+              <p className="text-sm text-gray-600">Owner: {pass.user_email || '—'}</p>
 
               <div className="mt-4">
                 <h4 className="font-semibold">Slots</h4>
@@ -127,7 +127,12 @@ export default function ScanPage() {
                         <div className="text-xs text-gray-400">Assigned: {s.assigned_at ? new Date(s.assigned_at).toLocaleString() : '-'}</div>
                       </div>
                       <div className="flex gap-2">
-                        {!s.attended && <button className="px-3 py-1 bg-red-600 text-white rounded" onClick={() => deleteSlot(s.slot_no)}>Delete</button>}
+                        <button 
+                          className="px-3 py-1 bg-red-600 text-white rounded"
+                          onClick={() => deleteSlot(s.slot_no)}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                   ))}

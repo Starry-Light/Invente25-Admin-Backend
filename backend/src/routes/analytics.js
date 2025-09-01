@@ -28,7 +28,7 @@ router.get('/department/:id', authMiddleware, requireRole(['dept_admin','super_a
         COUNT(s.*)::int AS total_registrations,
         COALESCE(SUM(CASE WHEN s.attended THEN 1 ELSE 0 END),0)::int AS total_attendance
       FROM slots s
-      JOIN events e ON s.event_id = e.id
+      JOIN events e ON s.event_id = e.external_id
       WHERE e.department_id = $1
     `, [deptId]);
     const total_registrations = regRes.rows[0].total_registrations || 0;
@@ -36,14 +36,14 @@ router.get('/department/:id', authMiddleware, requireRole(['dept_admin','super_a
 
     const perEvent = (await db.query(`
       SELECT
-        e.id AS event_id,
+        e.external_id AS event_id,
         e.name AS event_name,
         COUNT(s.*)::int AS registrations,
         COALESCE(SUM(CASE WHEN s.attended THEN 1 ELSE 0 END),0)::int AS attendance
       FROM events e
-      LEFT JOIN slots s ON s.event_id = e.id
+      LEFT JOIN slots s ON s.event_id = e.external_id
       WHERE e.department_id = $1
-      GROUP BY e.id, e.name
+      GROUP BY e.external_id, e.name
       ORDER BY registrations DESC, e.name
     `, [deptId])).rows;
 
@@ -53,21 +53,22 @@ router.get('/department/:id', authMiddleware, requireRole(['dept_admin','super_a
     const timeRes = (await db.query(`
       SELECT date_trunc('day', s.assigned_at)::date AS day, COUNT(*)::int AS count
       FROM slots s
-      JOIN events e ON s.event_id = e.id
+      JOIN events e ON s.event_id = e.external_id
       WHERE e.department_id = $1 AND s.assigned_at >= now() - interval '30 days'
       GROUP BY day
       ORDER BY day
     `, [deptId])).rows;
 
     const passesByPayment = (await db.query(`
-      SELECT p.payment_method,
-             COUNT(DISTINCT p.id)::int AS total_passes,
-             SUM(CASE WHEN p.verified THEN 1 ELSE 0 END)::int AS verified_passes
+      SELECT 
+        r.method,
+        COUNT(DISTINCT p.pass_id)::int AS total_passes
       FROM passes p
-      JOIN slots s ON s.pass_id = p.id
-      JOIN events e ON s.event_id = e.id
+      JOIN receipts r ON p.payment_id = r.payment_id
+      JOIN slots s ON s.pass_id = p.pass_id
+      JOIN events e ON s.event_id = e.external_id
       WHERE e.department_id = $1
-      GROUP BY p.payment_method
+      GROUP BY r.method
     `, [deptId])).rows;
 
     return res.json({
@@ -106,14 +107,14 @@ router.get('/college', authMiddleware, requireRole(['super_admin']), async (req,
         COALESCE(SUM(CASE WHEN s.attended THEN 1 ELSE 0 END),0)::int AS attendance
       FROM departments d
       LEFT JOIN events e ON e.department_id = d.id
-      LEFT JOIN slots s ON s.event_id = e.id
+      LEFT JOIN slots s ON s.event_id = e.external_id
       GROUP BY d.id, d.name
       ORDER BY registrations DESC
     `)).rows;
 
     const topEvents = (await db.query(`
       SELECT
-        e.id AS event_id,
+        e.external_id AS event_id,
         e.name AS event_name,
         d.id AS department_id,
         d.name AS department_name,
@@ -121,8 +122,8 @@ router.get('/college', authMiddleware, requireRole(['super_admin']), async (req,
         COALESCE(SUM(CASE WHEN s.attended THEN 1 ELSE 0 END),0)::int AS attendance
       FROM events e
       LEFT JOIN departments d ON e.department_id = d.id
-      LEFT JOIN slots s ON s.event_id = e.id
-      GROUP BY e.id, e.name, d.id, d.name
+      LEFT JOIN slots s ON s.event_id = e.external_id
+      GROUP BY e.external_id, e.name, d.id, d.name
       ORDER BY registrations DESC
       LIMIT 20
     `)).rows;
@@ -136,11 +137,12 @@ router.get('/college', authMiddleware, requireRole(['super_admin']), async (req,
     `)).rows;
 
     const passesByPayment = (await db.query(`
-      SELECT payment_method,
-             COUNT(*)::int AS total_passes,
-             SUM(CASE WHEN verified THEN 1 ELSE 0 END)::int AS verified_passes
-      FROM passes
-      GROUP BY payment_method
+      SELECT 
+        r.method,
+        COUNT(DISTINCT p.pass_id)::int AS total_passes
+      FROM passes p
+      JOIN receipts r ON p.payment_id = r.payment_id
+      GROUP BY r.method
     `)).rows;
 
     return res.json({

@@ -6,30 +6,23 @@ const { randomUUID } = require('crypto');
 
 const router = express.Router();
 
-// get pass by id. where is this used??? why did i make this
+// get pass by id
 router.get('/:passId', authMiddleware, async (req, res) => {
   const { passId } = req.params;
-  const passRes = await db.query('SELECT * FROM passes WHERE id=$1', [passId]);
+  const passRes = await db.query('SELECT * FROM passes WHERE pass_id=$1', [passId]);
   if (passRes.rows.length === 0) return res.status(404).json({ error: 'not found' });
   const slots = (await db.query('SELECT * FROM slots WHERE pass_id=$1 ORDER BY slot_no', [passId])).rows;
   res.json({ pass: passRes.rows[0], slots });
 });
 
-// can hit this endpoint to list passes (used to list unverified passes for cash payment)
+// list all passes with their payment details
 router.get('/', authMiddleware, requireRole(['volunteer','dept_admin','super_admin']), async (req, res) => {
-  const { verified, payment_method } = req.query;
-  const q = [];
-  const params = [];
-  if (verified !== undefined) {
-    params.push(verified === 'true');
-    q.push(`verified = $${params.length}`);
-  }
-  if (payment_method) {
-    params.push(payment_method);
-    q.push(`payment_method = $${params.length}`);
-  }
-  const where = q.length ? 'WHERE ' + q.join(' AND ') : '';
-  const rows = (await db.query(`SELECT * FROM passes ${where} ORDER BY created_at DESC`, params)).rows;
+  const rows = (await db.query(`
+    SELECT p.*, r.method as payment_method 
+    FROM passes p 
+    LEFT JOIN receipts r ON p.payment_id = r.payment_id 
+    ORDER BY p.created_at DESC`
+  )).rows;
   res.json({ rows });
 });
 
@@ -45,6 +38,10 @@ router.post('/:passId/slots', authMiddleware, requireRole(['volunteer','dept_adm
   if (!passId) return res.status(400).json({ error: 'passId required' });
   if (!Number.isInteger(slotNo) || slotNo < 1 || slotNo > 4) return res.status(400).json({ error: 'slot_no must be integer between 1 and 4' });
   if (!Number.isInteger(evId)) return res.status(400).json({ error: 'event_id required' });
+  
+  // verify event exists with this external_id
+  const eventExists = await db.query('SELECT 1 FROM events WHERE external_id = $1', [evId]);
+  if (eventExists.rows.length === 0) return res.status(400).json({ error: 'event not found' });
 
   const client = await db.getClient();
   try {
@@ -58,7 +55,7 @@ router.post('/:passId/slots', authMiddleware, requireRole(['volunteer','dept_adm
     }
 
     // Verify event exists and get its department_id
-    const eventRow = (await client.query('SELECT id, department_id FROM events WHERE id = $1', [evId])).rows[0];
+    const eventRow = (await client.query('SELECT external_id, department_id FROM events WHERE external_id = $1', [evId])).rows[0];
     if (!eventRow) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'event not found' });
@@ -206,7 +203,7 @@ router.post('/:passId/attendance', authMiddleware, requireRole(['event_admin','d
 
   try {
     // verify event exists and get its department
-    const evRow = (await db.query('SELECT id, department_id FROM events WHERE id = $1', [event_id])).rows[0];
+    const evRow = (await db.query('SELECT external_id, department_id FROM events WHERE external_id = $1', [event_id])).rows[0];
     if (!evRow) return res.status(404).json({ error: 'event not found' });
 
     // If the caller is an event_admin, ensure they belong to the same department
