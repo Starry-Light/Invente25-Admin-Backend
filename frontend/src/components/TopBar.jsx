@@ -38,6 +38,16 @@ export default function TopBar() {
               Cash Registration
             </Link>
           )}
+          {user && ["volunteer", "dept_admin", "super_admin"].includes(user.role) && (
+            <Link to="/workshop-registration" className="hover:underline">
+              Workshop Registration
+            </Link>
+          )}
+          {user && ["volunteer", "dept_admin", "super_admin"].includes(user.role) && (
+            <Link to="/non-tech-registration" className="hover:underline">
+              Non-Tech Registration
+            </Link>
+          )}
         </nav>
       </div>
       <div className="flex items-center gap-4">

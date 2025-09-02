@@ -1,5 +1,6 @@
 // src/pages/Scan.jsx
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import AssignSlotForm from '../components/AssignSlotForm';
 import QRScanner from '../components/QRScanner';
@@ -24,11 +25,25 @@ function normalizeDecoded(raw) {
   return s;
 }
 
+// Helper function to detect pass type from passId
+function detectPassType(passId) {
+  const upperPassId = passId.toUpperCase();
+  if (upperPassId.endsWith('$t')) return 'technical';
+  if (upperPassId.endsWith('$n')) return 'non-technical';
+  if (upperPassId.endsWith('$w')) return 'workshop';
+  if (upperPassId.endsWith('$h')) return 'hackathon';
+  return 'technical'; // Default for backward compatibility
+}
+
 export default function ScanPage() {
   const { authAxios } = useAuth();
+  const navigate = useNavigate();
   const [passId, setPassId] = useState('');
   const [pass, setPass] = useState(null);
   const [slots, setSlots] = useState([]);
+  const [event, setEvent] = useState(null);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [passType, setPassType] = useState(null);
   const [msg, setMsg] = useState(null);
 
   const doScan = useCallback(async (id) => {
@@ -39,14 +54,36 @@ export default function ScanPage() {
       if (!resp || !resp.data || !resp.data.pass) {
         setPass(null);
         setSlots([]);
+        setEvent(null);
+        setTeamMembers([]);
+        setPassType(null);
         setMsg('No pass data returned');
         return;
       }
-      setPass(resp.data.pass);
-      setSlots(resp.data.slots || []);
+      
+      const p = resp.data.pass;
+      const type = resp.data.passType;
+      setPass(p);
+      setPassType(type);
+
+      // Redirect non-technical, workshop, and hackathon passes to attendance page
+      if (type === 'non-technical' || type === 'workshop' || type === 'hackathon') {
+        navigate(`/attendance?passId=${encodeURIComponent(id)}`);
+        return;
+      }
+
+      // Only handle technical passes on this page
+      if (type === 'technical') {
+        setSlots(resp.data.slots || []);
+        setEvent(null);
+        setTeamMembers([]);
+      }
     } catch (err) {
       setPass(null);
       setSlots([]);
+      setEvent(null);
+      setTeamMembers([]);
+      setPassType(null);
       setMsg(err?.response?.data?.error || String(err));
       console.error('doScan error', err);
     }
@@ -65,6 +102,11 @@ export default function ScanPage() {
       setMsg('No pass loaded');
       return;
     }
+    // Only allow slot assignment for technical events
+    if (passType !== 'technical') {
+      setMsg('Slot assignment only allowed for technical events');
+      return;
+    }
     try {
       await authAxios.post(`/scan/${pass.pass_id}/assign`, { slot_no, event_id });
       await doScan(pass.pass_id);
@@ -77,6 +119,11 @@ export default function ScanPage() {
   const deleteSlot = async (slot_no) => {
     if (!pass || !pass.pass_id) {
       setMsg('No pass loaded');
+      return;
+    }
+    // Only allow slot deletion for technical events
+    if (passType !== 'technical') {
+      setMsg('Slot deletion only allowed for technical events');
       return;
     }
     const confirmed = window.confirm(`Delete slot ${slot_no}? This cannot be undone.`);
@@ -113,33 +160,45 @@ export default function ScanPage() {
           {pass ? (
             <div className="bg-white p-4 rounded shadow">
               <h3 className="font-semibold break-words">Pass: {pass.pass_id}</h3>
-              <p className="text-sm text-gray-600">Owner: {pass.user_email || '—'}</p>
+              <p className="text-sm text-gray-600">
+                Owner: {pass.user_email || pass.leader_email || '—'}
+              </p>
+              <p className="text-sm text-gray-500">
+                Type: {passType?.charAt(0).toUpperCase() + passType?.slice(1) || 'Unknown'}
+              </p>
 
-              <div className="mt-4">
-                <h4 className="font-semibold">Slots</h4>
-                <div className="space-y-2 mt-2">
-                  {slots.length === 0 && <div className="text-sm text-gray-500">No slots assigned yet.</div>}
-                  {slots.map(s => (
-                    <div key={s.slot_no} className="p-2 border rounded flex justify-between items-center">
-                      <div>
-                        <div className="text-sm font-medium">Slot {s.slot_no} — {s.event_name || `Event ID ${s.event_id}`}</div>
-                        <div className="text-xs text-gray-500">Attended: {s.attended ? 'Yes' : 'No'}</div>
-                        <div className="text-xs text-gray-400">Assigned: {s.assigned_at ? new Date(s.assigned_at).toLocaleString() : '-'}</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button 
-                          className="px-3 py-1 bg-red-600 text-white rounded"
-                          onClick={() => deleteSlot(s.slot_no)}
-                        >
-                          Delete
-                        </button>
-                      </div>
+              {/* Only show technical pass details since others redirect to attendance */}
+              {passType === 'technical' && (
+                <>
+                  <div className="mt-4">
+                    <h4 className="font-semibold">Slots</h4>
+                    <div className="space-y-2 mt-2">
+                      {slots.length === 0 && <div className="text-sm text-gray-500">No slots assigned yet.</div>}
+                      {slots.map(s => (
+                        <div key={s.slot_no} className="p-2 border rounded flex justify-between items-center">
+                          <div>
+                            <div className="text-sm font-medium">Slot {s.slot_no} — {s.event_name || `Event ID ${s.event_id}`}</div>
+                            <div className="text-xs text-gray-500">Attended: {s.attended ? 'Yes' : 'No'}</div>
+                            <div className="text-xs text-gray-400">Assigned: {s.assigned_at ? new Date(s.assigned_at).toLocaleString() : '-'}</div>
+                          </div>
+                          <div className="flex gap-2">
+                            {!s.attended && (
+                              <button 
+                                className="px-3 py-1 bg-red-600 text-white rounded"
+                                onClick={() => deleteSlot(s.slot_no)}
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              <AssignSlotForm onAssign={assignSlot} existingSlots={slots} />
+                  <AssignSlotForm onAssign={assignSlot} existingSlots={slots} />
+                </>
+              )}
             </div>
           ) : (
             <div className="text-sm text-gray-500">No pass loaded</div>

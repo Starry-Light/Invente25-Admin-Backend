@@ -25,10 +25,12 @@ export default function AssignSlotForm({ onAssign, existingSlots = [] }) {
     setLoading(true);
     setErr(null);
     try {
-      // Fetch all events (no department filter) — everyone can assign any event now
+      // Fetch only technical events for slot assignment
       const resp = await authAxios.get(`/events`);
       const rows = resp.data.rows || [];
-      setEvents(rows);
+      // Filter to only show technical events
+      const technicalEvents = rows.filter(event => event.event_type === 'technical');
+      setEvents(technicalEvents);
     } catch (e) {
       console.error('fetch events error', e);
       setErr('Failed to load events');

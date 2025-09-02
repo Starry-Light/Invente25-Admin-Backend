@@ -1,5 +1,6 @@
 --- SQL migration script to initialize the database schema
 CREATE EXTENSION IF NOT EXISTS "pgcrypto"; -- this is for gen_random_uuid() (have to replace with uuid7)
+CREATE EXTENSION IF NOT EXISTS "citext"; -- this is for CITEXT
 
 CREATE TABLE users ( -- participants
   email TEXT PRIMARY KEY,
@@ -15,11 +16,12 @@ CREATE TABLE departments (
 );
 
 -- being fetched from strapi backend (static table)
-CREATE TABLE events ( 
+CREATE TABLE events ( -- should contain all events, not just tech events
   id SERIAL PRIMARY KEY, 
   external_id INT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   department_id INT REFERENCES departments(id),
+  event_type TEXT NOT NULL DEFAULT 'technical', -- 'technical', 'non-technical', 'workshop'
   registrations INT DEFAULT 0, -- coz why not? maybe we can remove later or just not use
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -68,6 +70,37 @@ CREATE INDEX ON slots(event_id); -- for quicker analytics later on
 CREATE INDEX ON passes(user_email);
 CREATE INDEX ON admins(department_id);
 
+
+-- Hackathon Passes
+
+CREATE TABLE hackathon_passes (
+  team_id TEXT PRIMARY KEY,
+  leader_email CITEXT NOT NULL,
+  team_name VARCHAR(100) NOT NULL,
+  track VARCHAR(100) NOT NULL,
+  payment_id VARCHAR(100) UNIQUE,
+  ticket_issued BOOLEAN NOT NULL DEFAULT FALSE, -- whether qr code has been sent 
+  attended BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_hack_passes_leader_email ON hackathon_passes(leader_email);
+CREATE INDEX idx_hack_passes_payment_id ON hackathon_passes(payment_id);
+
+CREATE TABLE hack_reg_details (
+  team_id TEXT NOT NULL,
+  email CITEXT NOT NULL,
+  full_name VARCHAR(150) NOT NULL,
+  institution VARCHAR(150),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  phone_number VARCHAR(20),
+  PRIMARY KEY (team_id, email),
+  CONSTRAINT hash_reg_details_team_fk FOREIGN KEY (team_id) REFERENCES hackathon_passes(team_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_hack_reg_details_email ON hack_reg_details(email);
+CREATE INDEX idx_hack_reg_details_institution ON hack_reg_details(institution);
+
 -- Seed departments
 INSERT INTO departments (name) VALUES
   ('CSE_SSN'),
@@ -79,7 +112,8 @@ INSERT INTO departments (name) VALUES
   ('MECH'),
   ('CIVIL'),
   ('BME'),
-  ('COM');
+  ('COM'),
+  ('WORKSHOP');
 
 -- Seed admin accounts
 -- Super admin (no department)

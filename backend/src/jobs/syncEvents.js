@@ -54,7 +54,7 @@ async function syncEvents() {
 
     const { data } = responseData;
     
-    // Filter technical events
+    // Filter all event types
     // console.log('Processing events:', data);
     
     const technicalEvents = data.filter(event => {
@@ -65,8 +65,27 @@ async function syncEvents() {
       return event.attributes.class === 'technical'
     });
 
-    console.log(`Found ${technicalEvents.length} technical events`);
+    const nonTechnicalEvents = data.filter(event => {
+      if (!event || !event.attributes || !event.attributes.class) {
+        console.error('Malformed event object:', event);
+        return false;
+      }
+      return event.attributes.class === 'non-technical'
+    });
 
+    const workshopEvents = data.filter(event => {
+      if (!event || !event.attributes || !event.attributes.class) {
+        console.error('Malformed event object:', event);
+        return false;
+      }
+      return event.attributes.class === 'workshop'
+    });
+
+    console.log(`Found ${technicalEvents.length} technical events`);
+    console.log(`Found ${nonTechnicalEvents.length} non-technical events`);
+    console.log(`Found ${workshopEvents.length} workshop events`);
+
+    // Process technical events
     for (const event of technicalEvents) {
       // Map the department name
       const ourDeptName = DEPARTMENT_MAPPING[event.attributes.department];
@@ -89,18 +108,90 @@ async function syncEvents() {
       try {
         // Upsert the event
         await db.query(`
-          INSERT INTO events (external_id, name, department_id)
-          VALUES ($1, $2, $3)
+          INSERT INTO events (external_id, name, department_id, event_type)
+          VALUES ($1, $2, $3, $4)
           ON CONFLICT (external_id) 
           DO UPDATE SET 
             name = EXCLUDED.name,
-            department_id = EXCLUDED.department_id
+            department_id = EXCLUDED.department_id,
+            event_type = EXCLUDED.event_type
           `,
-          [event.id, event.attributes.name, deptResult.rows[0].id]
+          [event.id, event.attributes.name, deptResult.rows[0].id, 'technical']
         );
         console.log(`Synced event: ${event.attributes.name} - ${event.attributes.department}`);
       } catch (error) {
         console.error(`Error syncing event ${event.attributes.name}:`, error);
+      }
+    }
+
+    // Process workshop events
+    for (const event of workshopEvents) {
+      // Get workshop department ID
+      const workshopDeptResult = await db.query(
+        'SELECT id FROM departments WHERE name = $1',
+        ['WORKSHOP']
+      );
+      
+      if (workshopDeptResult.rows.length === 0) {
+        console.error('WORKSHOP department not found');
+        continue;
+      }
+
+      try {
+        // Upsert the workshop event
+        await db.query(`
+          INSERT INTO events (external_id, name, department_id, event_type)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (external_id) 
+          DO UPDATE SET 
+            name = EXCLUDED.name,
+            department_id = EXCLUDED.department_id,
+            event_type = EXCLUDED.event_type
+          `,
+          [event.id, event.attributes.name, workshopDeptResult.rows[0].id, 'workshop']
+        );
+        console.log(`Synced workshop: ${event.attributes.name}`);
+      } catch (error) {
+        console.error(`Error syncing workshop ${event.attributes.name}:`, error);
+      }
+    }
+
+    // Process non-technical events
+    for (const event of nonTechnicalEvents) {
+      // Map the department name (same as technical events)
+      const ourDeptName = DEPARTMENT_MAPPING[event.attributes.department];
+      if (!ourDeptName) {
+        console.error(`Unknown department mapping for: ${event.attributes.department}`);
+        continue;
+      }
+
+      // Get department ID
+      const deptResult = await db.query(
+        'SELECT id FROM departments WHERE name = $1',
+        [ourDeptName]
+      );
+      
+      if (deptResult.rows.length === 0) {
+        console.error(`Department ${ourDeptName} not found`);
+        continue;
+      }
+
+      try {
+        // Upsert the non-technical event
+        await db.query(`
+          INSERT INTO events (external_id, name, department_id, event_type)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (external_id) 
+          DO UPDATE SET 
+            name = EXCLUDED.name,
+            department_id = EXCLUDED.department_id,
+            event_type = EXCLUDED.event_type
+          `,
+          [event.id, event.attributes.name, deptResult.rows[0].id, 'non-technical']
+        );
+        console.log(`Synced non-technical event: ${event.attributes.name} - ${event.attributes.department}`);
+      } catch (error) {
+        console.error(`Error syncing non-technical event ${event.attributes.name}:`, error);
       }
     }
 

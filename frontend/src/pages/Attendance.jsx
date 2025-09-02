@@ -1,5 +1,6 @@
 // src/pages/Attendance.jsx
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useRef, useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import QRScanner from '../components/QRScanner'
 
@@ -27,14 +28,28 @@ function normalizeDecoded(raw) {
   return s
 }
 
+// Helper function to detect pass type from passId
+function detectPassType(passId) {
+  const upperPassId = passId.toUpperCase();
+  if (upperPassId.endsWith('$t')) return 'technical';
+  if (upperPassId.endsWith('$n')) return 'non-technical';
+  if (upperPassId.endsWith('$w')) return 'workshop';
+  if (upperPassId.endsWith('$h')) return 'hackathon';
+  return 'technical'; // Default for backward compatibility
+}
+
 export default function AttendancePage() {
   const { authAxios, user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [passId, setPassId] = useState('')
   const [pass, setPass] = useState(null)
   const [slots, setSlots] = useState([])
+  const [event, setEvent] = useState(null)
+  const [teamMembers, setTeamMembers] = useState([])
+  const [passType, setPassType] = useState(null)
   const [msg, setMsg] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [marking, setMarking] = useState({}) // map event_id -> bool
+  const [marking, setMarking] = useState(false)
 
   // to ignore duplicate quick scans
   const lastScannedRef = useRef({ id: null, ts: 0 })
@@ -48,32 +63,63 @@ export default function AttendancePage() {
       if (!resp || !resp.data || !resp.data.pass) {
         setPass(null)
         setSlots([])
+        setEvent(null)
+        setTeamMembers([])
+        setPassType(null)
         setMsg('No pass data returned')
         setLoading(false)
         return
       }
+      
       const p = resp.data.pass
-      const all = resp.data.slots || []
-      // client-side visibility filtering (backend enforces too)
-      const visible = all.filter(s => {
-        if (!user) return false
-        if (user.role === 'super_admin' || user.role === 'dept_admin') return true
-        if (user.role === 'event_admin') {
-          return s.department_id === user.department_id
-        }
-        return false
-      })
+      const type = resp.data.passType
       setPass(p)
-      setSlots(visible)
+      setPassType(type)
+
+      if (type === 'technical') {
+        const all = resp.data.slots || []
+        // client-side visibility filtering (backend enforces too)
+        const visible = all.filter(s => {
+          if (!user) return false
+          if (user.role === 'super_admin' || user.role === 'dept_admin') return true
+          if (user.role === 'event_admin') {
+            return s.department_id === user.department_id
+          }
+          return false
+        })
+        setSlots(visible)
+        setEvent(null)
+        setTeamMembers([])
+      } else if (type === 'non-technical' || type === 'workshop') {
+        setEvent(resp.data.event)
+        setSlots([])
+        setTeamMembers([])
+      } else if (type === 'hackathon') {
+        setTeamMembers(resp.data.teamMembers || [])
+        setSlots([])
+        setEvent(null)
+      }
     } catch (err) {
       setPass(null)
       setSlots([])
+      setEvent(null)
+      setTeamMembers([])
+      setPassType(null)
       setMsg(err?.response?.data?.error || String(err))
       console.error('Attendance load error', err)
     } finally {
       setLoading(false)
     }
   }, [authAxios, user])
+
+  // Handle passId from URL parameter (redirected from scan page)
+  useEffect(() => {
+    const urlPassId = searchParams.get('passId');
+    if (urlPassId) {
+      setPassId(urlPassId);
+      load(urlPassId);
+    }
+  }, [searchParams, load]);
 
   const onQrResult = useCallback((decodedText) => {
     if (!decodedText) return
@@ -90,22 +136,23 @@ export default function AttendancePage() {
     load(normalized)
   }, [load])
 
-  const markAtt = async (slot_no) => {
+  const markAtt = async (slot_no = null) => {
     if (!pass || !pass.pass_id) {
       setMsg('No pass loaded')
       return
     }
     setMsg(null)
-    setMarking(prev => ({ ...prev, [slot_no]: true }))
+    setMarking(true)
     try {
-      await authAxios.post(`/scan/${pass.pass_id}/attend`, { slot_no })
-      // reload slots for latest state
+      const payload = slot_no ? { slot_no } : {}
+      await authAxios.post(`/scan/${pass.pass_id}/attend`, payload)
+      // reload for latest state
       await load(pass.pass_id)
     } catch (err) {
       setMsg(err?.response?.data?.error || String(err))
       console.error('markAtt error', err)
     } finally {
-      setMarking(prev => ({ ...prev, [slot_no]: false }))
+      setMarking(false)
     }
   }
 
@@ -147,36 +194,95 @@ export default function AttendancePage() {
             <div className="bg-white p-4 rounded shadow">
               <h3 className="font-semibold break-words">Pass: {pass.pass_id}</h3>
               <p className="text-sm text-gray-600">
-                Owner: {pass.user_email || '—'}
+                Owner: {pass.user_email || pass.leader_email || '—'}
+              </p>
+              <p className="text-sm text-gray-500">
+                Type: {passType?.charAt(0).toUpperCase() + passType?.slice(1) || 'Unknown'}
               </p>
 
-              <div className="mt-4">
-                <h4 className="font-semibold">Slots</h4>
-                <div className="space-y-2 mt-2">
-                  {slots.length === 0 && <div className="text-sm text-gray-500">No slots visible for this pass (or none belong to your department)</div>}
-                  {slots.map(s => (
-                    <div key={s.slot_no} className="p-3 border rounded flex justify-between items-center">
-                      <div>
-                        <div className="text-sm font-medium">Slot {s.slot_no} - {s.event_name || `Event ${s.event_id}`}</div>
-                        <div className="text-xs text-gray-500">Assigned: {s.assigned_at ? new Date(s.assigned_at).toLocaleString() : '-'}</div>
-                        <div className="text-xs text-gray-500">Attended: {s.attended ? 'Yes' : 'No'}</div>
-                      </div>
+              {passType === 'technical' && (
+                <div className="mt-4">
+                  <h4 className="font-semibold">Slots</h4>
+                  <div className="space-y-2 mt-2">
+                    {slots.length === 0 && <div className="text-sm text-gray-500">No slots visible for this pass (or none belong to your department)</div>}
+                    {slots.map(s => (
+                      <div key={s.slot_no} className="p-3 border rounded flex justify-between items-center">
+                        <div>
+                          <div className="text-sm font-medium">Slot {s.slot_no} - {s.event_name || `Event ${s.event_id}`}</div>
+                          <div className="text-xs text-gray-500">Assigned: {s.assigned_at ? new Date(s.assigned_at).toLocaleString() : '-'}</div>
+                          <div className="text-xs text-gray-500">Attended: {s.attended ? 'Yes' : 'No'}</div>
+                        </div>
 
-                      <div className="flex gap-2">
-                        {!s.attended && (
-                          <button
-                            className="px-3 py-1 bg-green-600 text-white rounded"
-                            onClick={() => markAtt(s.slot_no)}
-                            disabled={Boolean(marking[s.slot_no])}
-                          >
-                            {marking[s.slot_no] ? 'Marking...' : 'Mark Present'}
-                          </button>
-                        )}
+                        <div className="flex gap-2">
+                          {!s.attended && (
+                            <button
+                              className="px-3 py-1 bg-green-600 text-white rounded"
+                              onClick={() => markAtt(s.slot_no)}
+                              disabled={marking}
+                            >
+                              {marking ? 'Marking...' : 'Mark Present'}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {(passType === 'non-technical' || passType === 'workshop') && event && (
+                <div className="mt-4">
+                  <h4 className="font-semibold">Event</h4>
+                  <div className="p-3 border rounded">
+                    <div className="text-sm font-medium">{event.event_name}</div>
+                    <div className="text-xs text-gray-500">Type: {event.event_type}</div>
+                    <div className="text-xs text-gray-500">Attended: {event.attended ? 'Yes' : 'No'}</div>
+                    
+                    {!event.attended && (
+                      <button
+                        className="mt-2 px-3 py-1 bg-green-600 text-white rounded"
+                        onClick={() => markAtt()}
+                        disabled={marking}
+                      >
+                        {marking ? 'Marking...' : 'Mark Present'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {passType === 'hackathon' && (
+                <div className="mt-4">
+                  <h4 className="font-semibold">Hackathon Team</h4>
+                  <div className="p-3 border rounded mb-3">
+                    <div className="text-sm font-medium">Team: {pass.team_name}</div>
+                    <div className="text-xs text-gray-500">Track: {pass.track}</div>
+                    <div className="text-xs text-gray-500">Attended: {pass.attended ? 'Yes' : 'No'}</div>
+                    
+                    {!pass.attended && (
+                      <button
+                        className="mt-2 px-3 py-1 bg-green-600 text-white rounded"
+                        onClick={() => markAtt()}
+                        disabled={marking}
+                      >
+                        {marking ? 'Marking...' : 'Mark Present'}
+                      </button>
+                    )}
+                  </div>
+                  
+                  <h5 className="font-medium mb-2">Team Members</h5>
+                  <div className="space-y-2">
+                    {teamMembers.map((member, index) => (
+                      <div key={index} className="p-2 border rounded text-sm">
+                        <div className="font-medium">{member.full_name}</div>
+                        <div className="text-xs text-gray-500">{member.email}</div>
+                        {member.institution && <div className="text-xs text-gray-500">{member.institution}</div>}
+                        {member.phone_number && <div className="text-xs text-gray-500">{member.phone_number}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-sm text-gray-500">No pass loaded</div>

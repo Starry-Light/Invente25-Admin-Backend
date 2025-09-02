@@ -14,7 +14,7 @@ router.get('/', authMiddleware, async (req, res) => {
     // Determine which events to show based on user role
     let rows;
     const queryBase = `
-      SELECT e.external_id, e.name, e.department_id, d.name AS department_name, e.registrations
+      SELECT e.external_id, e.name, e.department_id, d.name AS department_name, e.registrations, e.event_type
       FROM events e
       LEFT JOIN departments d ON e.department_id = d.id
     `;

@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "seed-admin": "node seed_admin.js"
+    "seed-admin": "node seed_admin.js",
+    "test-seed": "node test_seed.js"
   },
   "author": "Irfan Akthar",
   "license": "ISC",
