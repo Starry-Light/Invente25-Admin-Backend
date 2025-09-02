@@ -7,17 +7,6 @@ const axios = require('axios');
 
 const router = express.Router();
 
-// Validate that all event IDs exist in our database
-async function validateEvents(eventIds) {
-  if (!eventIds.length) return true;
-  
-  const result = await db.query(
-    'SELECT COUNT(*) as count FROM events WHERE external_id = ANY($1)',
-    [eventIds]
-  );
-  return result.rows[0].count === eventIds.length;
-}
-
 router.post('/', 
   authMiddleware, 
   requireRole(['volunteer', 'dept_admin', 'super_admin']),
@@ -43,10 +32,9 @@ router.post('/',
     try {
       await client.query('BEGIN');
 
-      // Validate all event IDs exist
-      if (eventIds.length && !(await validateEvents(eventIds))) {
-        throw new Error('One or more invalid event IDs');
-      }
+
+    // don't need to validate if event IDs exist because frontend will be fatching from my db anyways.
+
 
       const paymentId = uuidv4();
       const timestamp = new Date().toISOString();
@@ -72,11 +60,11 @@ router.post('/',
         phoneNumber
       });
 
-      // Create user if doesn't exist
-      await client.query(
-        'INSERT INTO users (email, name, phone) VALUES ($1, $2, $3) ON CONFLICT (email) DO UPDATE SET name = $2, phone = $3',
-        [emailID, name, phoneNumber]
-      );
+    //   // Create user if doesn't exist
+    //   await client.query(
+    //     'INSERT INTO users (email, name, phone) VALUES ($1, $2, $3) ON CONFLICT (email) DO UPDATE SET name = $2, phone = $3',
+    //     [emailID, name, phoneNumber]
+    //   );
 
       await client.query('COMMIT');
       res.json({ 

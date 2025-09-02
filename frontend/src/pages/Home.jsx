@@ -14,12 +14,7 @@ export default function Home() {
       to: "/scan",
       roles: [  "volunteer", "dept_admin", "super_admin"],
     },
-    {
-      title: "Unverified",
-      desc: "See cash payments that need marking as paid.",
-      to: "/unverified",
-      roles: ["volunteer", "dept_admin", "super_admin"],
-    },
+
     {
       title: "Attendance",
       desc: "Mark attendance for events (event admins).",
