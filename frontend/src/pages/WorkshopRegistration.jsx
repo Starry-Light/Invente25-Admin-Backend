@@ -9,6 +9,7 @@ export default function WorkshopRegistration() {
   const [loading, setLoading] = useState(false);
   const [workshops, setWorkshops] = useState([]);
   const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
 
   const [formData, setFormData] = useState({
     emailID: '',
@@ -31,6 +32,14 @@ export default function WorkshopRegistration() {
 
     fetchWorkshops();
   }, []);
+
+  const filteredWorkshops = workshops.filter(ws => {
+    const q = (search || '').trim().toLowerCase();
+    if (!q) return true;
+    const name = (ws.name || '').toLowerCase();
+    const idStr = String(ws.external_id || '');
+    return name.includes(q) || idStr.includes(q);
+  });
 
   const handleInputChange = (e) => {
     setFormData({
@@ -148,12 +157,21 @@ export default function WorkshopRegistration() {
         {/* Workshop Selection */}
         <div className="bg-white p-4 rounded shadow">
           <h2 className="text-lg font-semibold mb-4">Select Workshops</h2>
+          <div className="mb-3">
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search workshops by name or ID"
+              className="w-full p-2 border rounded"
+            />
+          </div>
           
-          {workshops.length === 0 ? (
+          {filteredWorkshops.length === 0 ? (
             <div className="text-gray-500">No workshops available</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {workshops.map(workshop => (
+              {filteredWorkshops.map(workshop => (
                 <div key={workshop.external_id} className="border rounded p-3">
                   <label className="flex items-start space-x-3 cursor-pointer">
                     <input

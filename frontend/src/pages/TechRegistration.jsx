@@ -62,7 +62,7 @@ export default function TechRegistration() {
     setError(null);
 
     try {
-      const response = await api.post('/cash-registration', formData);
+      const response = await api.post('/tech-registration', formData);
       alert(`Registration successful! Payment ID: \${response.data.paymentId}\nAmount: ₹\${response.data.amount}`);
       // Reset form
       setFormData({

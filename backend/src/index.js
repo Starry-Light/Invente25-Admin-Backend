@@ -13,7 +13,7 @@ const scanRouter = require('./routes/scan');
 const passesRouter = require('./routes/passes');
 const eventsRouter = require('./routes/events');
 const analyticsRouter = require('./routes/analytics');
-const cashRegistrationRouter = require('./routes/cash-registration');
+const techRegistrationRouter = require('./routes/tech-registration');
 const workshopRegistrationRouter = require('./routes/workshop-registration');
 const nonTechRegistrationRouter = require('./routes/non-tech-registration');
 
@@ -26,6 +26,16 @@ const PORT = process.env.PORT || 4000;
 // health (kept at root)
 app.get('/health', (req, res) => res.json({ ok: true }));
 
+// sync status endpoint
+app.get('/sync-status', (req, res) => {
+  const { syncEvents } = require('./jobs/syncEvents');
+  // This will be populated by the syncEvents function
+  res.json({ 
+    ok: true, 
+    message: 'Sync status endpoint - check logs for detailed sync information' 
+  });
+});
+
 // auth
 app.post('/auth/login', loginHandler);
 
@@ -34,7 +44,7 @@ app.use('/', scanRouter);           // scan routes e.g. GET /scan/:passId
 app.use('/passes', passesRouter);   // passes and slot management
 app.use('/events', eventsRouter);   // events listing
 app.use('/analytics', analyticsRouter); // analytics
-app.use('/cash-registration', cashRegistrationRouter); // cash registration endpoint
+app.use('/tech-registration', techRegistrationRouter); // tech registration endpoint
 app.use('/workshop-registration', workshopRegistrationRouter); // workshop registration endpoint
 app.use('/non-tech-registration', nonTechRegistrationRouter); // non-tech registration endpoint
 
@@ -43,8 +53,8 @@ app.listen(PORT, () => {
   
   // Set up events sync cron job
   if (process.env.SYNC_EVENTS_ENABLED === 'true') {
-    // Run every 10 seconds by default (using node-cron's extended format with seconds)
-    const cronSchedule = process.env.SYNC_EVENTS_CRON || '*/10 * * * * *';
+    // Run every 2 minutes by default (more reasonable for external API calls)
+    const cronSchedule = process.env.SYNC_EVENTS_CRON || '*/2 * * * *';
     cron.schedule(cronSchedule, () => {
       syncEvents().catch(err => console.error('Cron job error:', err));
     });

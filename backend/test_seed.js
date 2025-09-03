@@ -94,7 +94,7 @@ async function run() {
         const attended = Math.random() > 0.5; // Random attendance
         
         await db.query(
-          `INSERT INTO slots (pass_id, slot_no, event_id, attended, assigned_at) VALUES ($1, $2, $3, $4, NOW())`,
+          `INSERT INTO slots (pass_id, slot_no, event_id, attended, created_at) VALUES ($1, $2, $3, $4, NOW())`,
           [passId, j + 1, event.external_id, attended]
         );
       }
@@ -127,7 +127,7 @@ async function run() {
       // Create single slot for non-technical event
       const attended = Math.random() > 0.5;
       await db.query(
-        `INSERT INTO slots (pass_id, slot_no, event_id, attended, assigned_at) VALUES ($1, 1, $2, $3, NOW())`,
+        `INSERT INTO slots (pass_id, slot_no, event_id, attended, created_at) VALUES ($1, 1, $2, $3, NOW())`,
         [passId, event.external_id, attended]
       );
 
@@ -159,7 +159,7 @@ async function run() {
       // Create single slot for workshop
       const attended = Math.random() > 0.5;
       await db.query(
-        `INSERT INTO slots (pass_id, slot_no, event_id, attended, assigned_at) VALUES ($1, 1, $2, $3, NOW())`,
+        `INSERT INTO slots (pass_id, slot_no, event_id, attended, created_at) VALUES ($1, 1, $2, $3, NOW())`,
         [passId, event.external_id, attended]
       );
 
@@ -178,7 +178,7 @@ async function run() {
       
       // Create hackathon pass
       await db.query(
-        `INSERT INTO hackathon_passes (team_id, leader_email, team_name, track, payment_id, ticket_issued, attended) VALUES ($1, $2, $3, $4, $5, true, $6)`,
+        `INSERT INTO hack_passes (team_id, leader_email, team_name, track, payment_id, ticket_issued, attended) VALUES ($1, $2, $3, $4, $5, true, $6)`,
         [teamId, leader.email, teamName, track, uuidv4(), Math.random() > 0.5]
       );
 

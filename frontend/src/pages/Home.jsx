@@ -28,9 +28,21 @@ export default function Home() {
       roles: ["dept_admin", "super_admin"],
     },
     {
-      title: "Cash Registration",
-      desc: "Register participants and collect cash payments.",
-      to: "/cash-registration",
+      title: "Tech Registration",
+      desc: "Register technical participants.",
+      to: "/tech-registration",
+      roles: ["volunteer", "dept_admin", "super_admin"],
+    },
+    {
+      title: "Workshop Registration",
+      desc: "Register workshop participants.",
+      to: "/workshop-registration",
+      roles: ["volunteer", "dept_admin", "super_admin"],
+    },
+    {
+      title: "Non-Tech Registration",
+      desc: "Register non-technical participants.",
+      to: "/non-tech-registration",
       roles: ["volunteer", "dept_admin", "super_admin"],
     },
   ];

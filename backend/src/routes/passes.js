@@ -118,9 +118,9 @@ router.post('/:passId/slots', authMiddleware, requireRole(['volunteer','dept_adm
 
     // Insert slot
     const insertRes = await client.query(
-      `INSERT INTO slots (pass_id, slot_no, event_id, attended, assigned_at)
+      `INSERT INTO slots (pass_id, slot_no, event_id, attended, created_at)
        VALUES ($1, $2, $3, false, now())
-       RETURNING pass_id, slot_no, event_id, attended, assigned_at`,
+       RETURNING pass_id, slot_no, event_id, attended, created_at`,
       [passId, slotNo, evId]
     );
 

@@ -51,10 +51,10 @@ router.get('/department/:id', authMiddleware, requireRole(['dept_admin','super_a
     const top_event_by_attendance = perEvent.slice().sort((a,b) => (b.attendance - a.attendance) || b.registrations - a.registrations)[0] || null;
 
     const timeRes = (await db.query(`
-      SELECT date_trunc('day', s.assigned_at)::date AS day, COUNT(*)::int AS count
+      SELECT date_trunc('day', s.created_at)::date AS day, COUNT(*)::int AS count
       FROM slots s
       JOIN events e ON s.event_id = e.external_id
-      WHERE e.department_id = $1 AND s.assigned_at >= now() - interval '30 days'
+      WHERE e.department_id = $1 AND s.created_at >= now() - interval '30 days'
       GROUP BY day
       ORDER BY day
     `, [deptId])).rows;
@@ -129,9 +129,9 @@ router.get('/college', authMiddleware, requireRole(['super_admin']), async (req,
     `)).rows;
 
     const timeRes = (await db.query(`
-      SELECT date_trunc('day', s.assigned_at)::date AS day, COUNT(*)::int AS count
+      SELECT date_trunc('day', s.created_at)::date AS day, COUNT(*)::int AS count
       FROM slots s
-      WHERE s.assigned_at >= now() - interval '30 days'
+      WHERE s.created_at >= now() - interval '30 days'
       GROUP BY day
       ORDER BY day
     `)).rows;

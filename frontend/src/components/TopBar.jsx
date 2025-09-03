@@ -34,8 +34,8 @@ export default function TopBar() {
             </Link>
           )}
           {user && ["volunteer", "dept_admin", "super_admin"].includes(user.role) && (
-            <Link to="/cash-registration" className="hover:underline">
-              Cash Registration
+            <Link to="/tech-registration" className="hover:underline">
+              Tech Registration
             </Link>
           )}
           {user && ["volunteer", "dept_admin", "super_admin"].includes(user.role) && (
@@ -57,9 +57,13 @@ export default function TopBar() {
               {user.email}{" "}
               <span className="text-xs text-gray-500">({user.role})</span>
             </div>
+            {/* logout button need to make this redirect to login page */}
             <button
               className="px-3 py-1 rounded bg-red-500 text-white text-sm"
-              onClick={logout}
+              onClick={() => {
+                logout();
+                navigate('/login');
+              }}
             >
               Logout
             </button>

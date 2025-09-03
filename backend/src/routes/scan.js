@@ -6,11 +6,10 @@ const router = express.Router();
 
 // Helper function to detect pass type from passId
 function detectPassType(passId) {
-  const upperPassId = passId.toUpperCase();
-  if (upperPassId.endsWith('$t')) return 'technical';
-  if (upperPassId.endsWith('$n')) return 'non-technical';
-  if (upperPassId.endsWith('$w')) return 'workshop';
-  if (upperPassId.endsWith('$h')) return 'hackathon';
+  if (passId.endsWith('$t') || passId.endsWith('$T')) return 'technical';
+  if (passId.endsWith('$n') || passId.endsWith('$N')) return 'non-technical';
+  if (passId.endsWith('$w') || passId.endsWith('$W')) return 'workshop';
+  if (passId.endsWith('$h') || passId.endsWith('$H')) return 'hackathon';
   return 'technical'; // Default for backward compatibility
 }
 
@@ -29,24 +28,17 @@ router.get('/scan/:passId', authMiddleware, async (req, res) => {
       if (passRes.rows.length === 0) return res.status(404).json({ error: 'pass not found' });
       const pass = passRes.rows[0];
 
-      // Build the slots query based on user role
-      let slotsQuery = `
+      // Build the slots query - show ALL slots regardless of department
+      // This prevents department admins from accidentally overwriting slots from other departments
+      const slotsQuery = `
         SELECT s.slot_no, s.event_id, s.attended, e.name as event_name, e.department_id
         FROM slots s
         LEFT JOIN events e ON s.event_id = e.external_id
         WHERE s.pass_id = $1
+        ORDER BY s.slot_no
       `;
       
-      const queryParams = [passId];
-
-      // Department-specific roles only see their department's events
-      if (req.user.role !== 'super_admin' && !(req.user.role === 'volunteer' && !req.user.department_id)) {
-        slotsQuery += ' AND e.department_id = $2';
-        queryParams.push(req.user.department_id);
-      }
-
-      slotsQuery += ' ORDER BY s.slot_no';
-      const slotsRes = await db.query(slotsQuery, queryParams);
+      const slotsRes = await db.query(slotsQuery, [passId]);
 
       res.json({ 
         passType: 'technical',
@@ -101,15 +93,25 @@ router.get('/scan/:passId', authMiddleware, async (req, res) => {
     } else if (passType === 'hackathon') {
       // Handle hackathon passes
       const hackPassRes = await db.query(
-        'SELECT team_id, leader_email, team_name, track, payment_id, ticket_issued, attended FROM hackathon_passes WHERE team_id=$1',
+        'SELECT team_id, leader_email, team_name, track, payment_id, ticket_issued, attended FROM hack_passes WHERE team_id=$1',
         [passId]
       );
       if (hackPassRes.rows.length === 0) return res.status(404).json({ error: 'hackathon pass not found' });
       const hackPass = hackPassRes.rows[0];
 
-      // Get all team members
+      // Get all team members (include extended profile fields)
       const teamMembersRes = await db.query(
-        'SELECT email, full_name, institution, phone_number FROM hack_reg_details WHERE team_id=$1 ORDER BY email',
+        `SELECT 
+           email, 
+           full_name, 
+           institution, 
+           phone_number,
+           gender,
+           department,
+           year_of_study
+         FROM hack_reg_details 
+         WHERE team_id=$1 
+         ORDER BY email`,
         [passId]
       );
 
@@ -174,15 +176,30 @@ router.post('/scan/:passId/assign', authMiddleware, async (req, res) => {
       }
     }
 
-    // Insert or update the slot
+    // Check if slot already exists and is attended
+    const existingSlotRes = await db.query(
+      'SELECT slot_no, attended FROM slots WHERE pass_id=$1 AND slot_no=$2',
+      [passId, slot_no]
+    );
+    
+    if (existingSlotRes.rows.length > 0 && existingSlotRes.rows[0].attended) {
+      return res.status(400).json({ error: 'cannot overwrite an already attended slot' });
+    }
+
+    // Insert or update the slot (only if not attended)
     const slotRes = await db.query(
-      `INSERT INTO slots (pass_id, slot_no, event_id, assigned_at)
+      `INSERT INTO slots (pass_id, slot_no, event_id, created_at)
        VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
        ON CONFLICT (pass_id, slot_no) 
-       DO UPDATE SET event_id=$3, assigned_at=CURRENT_TIMESTAMP, attended=false
+       DO UPDATE SET event_id=$3, created_at=CURRENT_TIMESTAMP
+       WHERE slots.attended = false
        RETURNING *`,
       [passId, slot_no, event_id]
     );
+    
+    if (slotRes.rows.length === 0) {
+      return res.status(400).json({ error: 'cannot overwrite an already attended slot' });
+    }
 
     res.json({ message: 'event assigned', slot: slotRes.rows[0] });
   } catch (err) {
@@ -197,7 +214,8 @@ router.post('/scan/:passId/attend', authMiddleware, async (req, res) => {
   const { slot_no } = req.body;
   const passType = detectPassType(passId);
 
-  if (!(req.user.role === 'super_admin' || req.user.role === 'dept_admin' || req.user.role === 'event_admin' || (req.user.role === 'volunteer' && !req.user.department_id))) {
+  // Volunteers can view attendance data but cannot mark attendance
+  if (!(req.user.role === 'super_admin' || req.user.role === 'dept_admin' || req.user.role === 'event_admin')) {
     return res.status(403).json({ error: 'unauthorized to mark attendance' });
   }
 
@@ -292,7 +310,7 @@ router.post('/scan/:passId/attend', authMiddleware, async (req, res) => {
     } else if (passType === 'hackathon') {
       // Handle hackathon passes
       const hackPassRes = await db.query(
-        'SELECT team_id FROM hackathon_passes WHERE team_id=$1',
+        'SELECT team_id FROM hack_passes WHERE team_id=$1',
         [passId]
       );
       if (hackPassRes.rows.length === 0) {
@@ -301,7 +319,7 @@ router.post('/scan/:passId/attend', authMiddleware, async (req, res) => {
 
       // Update attendance for hackathon
       const updateRes = await db.query(
-        'UPDATE hackathon_passes SET attended=true WHERE team_id=$1 RETURNING *',
+        'UPDATE hack_passes SET attended=true WHERE team_id=$1 RETURNING *',
         [passId]
       );
 

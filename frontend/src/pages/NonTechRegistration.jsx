@@ -9,6 +9,7 @@ export default function NonTechRegistration() {
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState([]);
   const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
 
   const [formData, setFormData] = useState({
     emailID: '',
@@ -44,6 +45,15 @@ export default function NonTechRegistration() {
 
     fetchEvents();
   }, [user]);
+
+  const filteredEvents = events.filter(ev => {
+    const q = (search || '').trim().toLowerCase();
+    if (!q) return true;
+    const name = (ev.name || '').toLowerCase();
+    const dept = (ev.department_name || '').toLowerCase();
+    const idStr = String(ev.external_id || '');
+    return name.includes(q) || dept.includes(q) || idStr.includes(q);
+  });
 
   const handleInputChange = (e) => {
     setFormData({
@@ -161,12 +171,21 @@ export default function NonTechRegistration() {
         {/* Event Selection */}
         <div className="bg-white p-4 rounded shadow">
           <h2 className="text-lg font-semibold mb-4">Select Non-Technical Events</h2>
+          <div className="mb-3">
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search events by name, department or ID"
+              className="w-full p-2 border rounded"
+            />
+          </div>
           
-          {events.length === 0 ? (
+          {filteredEvents.length === 0 ? (
             <div className="text-gray-500">No non-technical events available</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {events.map(event => (
+              {filteredEvents.map(event => (
                 <div key={event.external_id} className="border rounded p-3">
                   <label className="flex items-start space-x-3 cursor-pointer">
                     <input

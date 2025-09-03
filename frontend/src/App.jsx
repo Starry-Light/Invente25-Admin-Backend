@@ -12,7 +12,7 @@ import ScanPage from "./pages/Scan";
 import AttendancePage from "./pages/Attendance";
 import AnalyticsPage from "./pages/Analytics";
 import LoginPage from "./pages/Login";
-import CashRegistrationPage from "./pages/CashRegistration";
+import TechRegistrationPage from "./pages/TechRegistration";
 import WorkshopRegistrationPage from "./pages/WorkshopRegistration";
 import NonTechRegistrationPage from "./pages/NonTechRegistration";
 
@@ -62,7 +62,7 @@ export default function App() {
               path="/attendance"
               element={
                 <RequireAuth
-                  roles={["event_admin", "dept_admin", "super_admin"]}
+                  roles={["volunteer", "event_admin", "dept_admin", "super_admin"]}
                 >
                   <AttendancePage />
                 </RequireAuth>
@@ -77,10 +77,10 @@ export default function App() {
               }
             />
             <Route
-              path="/cash-registration"
+              path="/tech-registration"
               element={
                 <RequireAuth roles={["volunteer", "dept_admin", "super_admin"]}>
-                  <CashRegistrationPage />
+                  <TechRegistrationPage />
                 </RequireAuth>
               }
             />

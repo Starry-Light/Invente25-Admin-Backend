@@ -1,6 +1,15 @@
 // jobs/syncEvents.js
 const db = require('../db');
 
+// Retry configuration
+const MAX_RETRIES = 3;
+const BASE_DELAY = 1000; // 1 second
+const TIMEOUT = 10000; // 10 seconds
+
+// Track consecutive failures for more intelligent retry
+let consecutiveFailures = 0;
+let lastSuccessfulSync = null;
+
 const DEPARTMENT_MAPPING = {
   'CSE': 'CSE_SSN',     // Map API's "CSE" to our "CSE_SSN"
   'SNU_CSE': 'CSE_SNU', // Map API's "SNU_CSE" to our "CSE_SNU"
@@ -13,6 +22,53 @@ const DEPARTMENT_MAPPING = {
   'BME': 'BME',
   'COM': 'COM'
 };
+
+// Helper function to sleep for a given number of milliseconds
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Helper function to fetch with timeout and retry logic
+async function fetchWithRetry(url, retries = MAX_RETRIES) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`Fetching from: ${url} (attempt ${attempt}/${retries})`);
+      
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
+      
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Invente25-Admin-Backend/1.0',
+          'Accept': 'application/json',
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`API responded with status: ${response.status} ${response.statusText}`);
+      }
+      
+      console.log(`✅ Successfully fetched data (attempt ${attempt})`);
+      return response;
+      
+    } catch (error) {
+      console.error(`❌ Attempt ${attempt} failed:`, error.message);
+      
+      if (attempt === retries) {
+        throw new Error(`Failed to fetch after ${retries} attempts. Last error: ${error.message}`);
+      }
+      
+      // Calculate delay with exponential backoff
+      const delay = BASE_DELAY * Math.pow(2, attempt - 1);
+      console.log(`⏳ Retrying in ${delay}ms...`);
+      await sleep(delay);
+    }
+  }
+}
 
 async function syncEvents() {
   // Check if sync is enabled and API URL is set
@@ -27,14 +83,10 @@ async function syncEvents() {
     return;
   }
   
-  console.log('Starting events sync...');
-  console.log('Fetching from:', process.env.EVENTS_API_URL);
+  console.log('🔄 Starting events sync...');
   
   try {
-    const response = await fetch(process.env.EVENTS_API_URL);
-    if (!response.ok) {
-      throw new Error(`API responded with status: ${response.status}`);
-    }
+    const response = await fetchWithRetry(process.env.EVENTS_API_URL);
 
     const responseText = await response.text();
     // console.log('Raw response:', responseText);
@@ -195,9 +247,32 @@ async function syncEvents() {
       }
     }
 
-    console.log('Events sync completed successfully');
+    console.log('✅ Events sync completed successfully');
+    consecutiveFailures = 0; // Reset failure counter on success
+    lastSuccessfulSync = new Date();
   } catch (error) {
-    console.error('Error in events sync:', error);
+    consecutiveFailures++;
+    console.error(`❌ Events sync failed (consecutive failures: ${consecutiveFailures}):`, error.message);
+    
+    // Log additional context for debugging
+    if (error.message.includes('ETIMEDOUT')) {
+      console.error('🔍 Network timeout detected - this may be due to slow external API response');
+    } else if (error.message.includes('ECONNREFUSED')) {
+      console.error('🔍 Connection refused - external API may be down');
+    } else if (error.message.includes('Failed to fetch after')) {
+      console.error('🔍 Multiple retry attempts failed - external API may be experiencing issues');
+    }
+    
+    // Log sync status
+    if (lastSuccessfulSync) {
+      const timeSinceLastSuccess = Math.round((new Date() - lastSuccessfulSync) / 1000);
+      console.error(`⏰ Last successful sync: ${timeSinceLastSuccess} seconds ago`);
+    } else {
+      console.error('⏰ No successful sync recorded yet');
+    }
+    
+    // Don't throw the error - let the cron job continue running
+    // The next scheduled run will attempt to sync again
   }
 }
 

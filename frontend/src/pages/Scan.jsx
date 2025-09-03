@@ -27,11 +27,10 @@ function normalizeDecoded(raw) {
 
 // Helper function to detect pass type from passId
 function detectPassType(passId) {
-  const upperPassId = passId.toUpperCase();
-  if (upperPassId.endsWith('$t')) return 'technical';
-  if (upperPassId.endsWith('$n')) return 'non-technical';
-  if (upperPassId.endsWith('$w')) return 'workshop';
-  if (upperPassId.endsWith('$h')) return 'hackathon';
+  if (passId.endsWith('$t') || passId.endsWith('$T')) return 'technical';
+  if (passId.endsWith('$n') || passId.endsWith('$N')) return 'non-technical';
+  if (passId.endsWith('$w') || passId.endsWith('$W')) return 'workshop';
+  if (passId.endsWith('$h') || passId.endsWith('$H')) return 'hackathon';
   return 'technical'; // Default for backward compatibility
 }
 
@@ -179,7 +178,7 @@ export default function ScanPage() {
                           <div>
                             <div className="text-sm font-medium">Slot {s.slot_no} — {s.event_name || `Event ID ${s.event_id}`}</div>
                             <div className="text-xs text-gray-500">Attended: {s.attended ? 'Yes' : 'No'}</div>
-                            <div className="text-xs text-gray-400">Assigned: {s.assigned_at ? new Date(s.assigned_at).toLocaleString() : '-'}</div>
+                            <div className="text-xs text-gray-400">Assigned: {s.created_at ? new Date(s.created_at).toLocaleString() : '-'}</div>
                           </div>
                           <div className="flex gap-2">
                             {!s.attended && (

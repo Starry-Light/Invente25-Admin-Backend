@@ -1,6 +1,6 @@
 --- SQL migration script to initialize the database schema
 CREATE EXTENSION IF NOT EXISTS "pgcrypto"; -- this is for gen_random_uuid() (have to replace with uuid7)
-CREATE EXTENSION IF NOT EXISTS "citext"; -- this is for CITEXT
+-- CREATE EXTENSION IF NOT EXISTS "citext"; -- no longer needed, using TEXT instead
 
 CREATE TABLE users ( -- participants
   email TEXT PRIMARY KEY,
@@ -51,7 +51,7 @@ CREATE TABLE slots ( -- separated this out from events to have the attended fiel
   slot_no INT NOT NULL,
   event_id INT REFERENCES events(external_id),
   attended BOOLEAN DEFAULT FALSE,
-  assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- changed to created_at doneee
   PRIMARY KEY (pass_id, slot_no)
 );
 
@@ -73,29 +73,38 @@ CREATE INDEX ON admins(department_id);
 
 -- Hackathon Passes
 
-CREATE TABLE hackathon_passes (
+CREATE TABLE hack_passes ( -- change to hack_passes doneee
   team_id TEXT PRIMARY KEY,
-  leader_email CITEXT NOT NULL,
+  leader_email TEXT NOT NULL, -- CHANGE TO TEXT doneee
   team_name VARCHAR(100) NOT NULL,
   track VARCHAR(100) NOT NULL,
   payment_id VARCHAR(100) UNIQUE,
   ticket_issued BOOLEAN NOT NULL DEFAULT FALSE, -- whether qr code has been sent 
-  attended BOOLEAN DEFAULT FALSE,
+  attended BOOLEAN DEFAULT FALSE, -- NOT NULL
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_hack_passes_leader_email ON hackathon_passes(leader_email);
-CREATE INDEX idx_hack_passes_payment_id ON hackathon_passes(payment_id);
+-- team id - domain -ps in case of software track ###########################################################
 
+-- we get problem statement domain 
+
+CREATE INDEX idx_hack_passes_leader_email ON hack_passes(leader_email);
+CREATE INDEX idx_hack_passes_payment_id ON hack_passes(payment_id);
+
+
+-- to add: gender, dept, year of study, etc. ###########################################################
 CREATE TABLE hack_reg_details (
   team_id TEXT NOT NULL,
-  email CITEXT NOT NULL,
+  email TEXT NOT NULL, -- CHANGE TO TEXT doneee
   full_name VARCHAR(150) NOT NULL,
   institution VARCHAR(150),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   phone_number VARCHAR(20),
+  gender VARCHAR(10),
+  department VARCHAR(100),
+  year_of_study VARCHAR(10),
   PRIMARY KEY (team_id, email),
-  CONSTRAINT hash_reg_details_team_fk FOREIGN KEY (team_id) REFERENCES hackathon_passes(team_id) ON DELETE CASCADE
+  CONSTRAINT hash_reg_details_team_fk FOREIGN KEY (team_id) REFERENCES hack_passes(team_id) ON DELETE CASCADE -- CHANGE TO HACK_PASSES
 );
 
 CREATE INDEX idx_hack_reg_details_email ON hack_reg_details(email);

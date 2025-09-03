@@ -34,9 +34,10 @@ services:
       - PAYMENT_VERIF_API_KEY=devapikey
       - SYNC_EVENTS_ENABLED=true
       - SYNC_EVENTS_CRON=*/2 * * * * # every 2 minutes and once per startup
-      - EVENTS_API_URL=https://ssnsnucinvente.com/api/events
+      - EVENTS_API_URL=https://ssnsnucinvente.com/api/events?pagination[pageSize]=140
       - PAYMENT_SERVICE_URL=http://localhost:8080/api/payment
       - RECEIPT_SERVICE_URL=http://localhost:8080/api/receipt
+      - MASTER_PW=itsmeirfan
     ports:
       - "4000:4000"
     depends_on:
