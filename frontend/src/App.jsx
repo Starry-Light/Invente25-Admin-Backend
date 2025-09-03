@@ -15,6 +15,7 @@ import LoginPage from "./pages/Login";
 import TechRegistrationPage from "./pages/TechRegistration";
 import WorkshopRegistrationPage from "./pages/WorkshopRegistration";
 import NonTechRegistrationPage from "./pages/NonTechRegistration";
+import SuperAdminDump from "./pages/SuperAdminDump";
 
 function RequireAuth({ children, roles }) {
   // simple guard in App; more advanced guard is implemented in pages as needed
@@ -89,6 +90,14 @@ export default function App() {
               element={
                 <RequireAuth roles={["volunteer", "dept_admin", "super_admin"]}>
                   <WorkshopRegistrationPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/dump"
+              element={
+                <RequireAuth roles={["super_admin"]}>
+                  <SuperAdminDump />
                 </RequireAuth>
               }
             />

@@ -16,6 +16,7 @@ const analyticsRouter = require('./routes/analytics');
 const techRegistrationRouter = require('./routes/tech-registration');
 const workshopRegistrationRouter = require('./routes/workshop-registration');
 const nonTechRegistrationRouter = require('./routes/non-tech-registration');
+const adminRouter = require('./routes/admin');
 
 const app = express();
 app.use(bodyParser.json());
@@ -47,6 +48,7 @@ app.use('/analytics', analyticsRouter); // analytics
 app.use('/tech-registration', techRegistrationRouter); // tech registration endpoint
 app.use('/workshop-registration', workshopRegistrationRouter); // workshop registration endpoint
 app.use('/non-tech-registration', nonTechRegistrationRouter); // non-tech registration endpoint
+app.use('/admin', adminRouter); // superadmin-only admin utilities
 
 app.listen(PORT, () => {
   console.log(`Invente25 admin backend listening on ${PORT}`);
