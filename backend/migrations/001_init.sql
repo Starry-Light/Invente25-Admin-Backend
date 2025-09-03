@@ -87,6 +87,12 @@ CREATE TABLE hack_passes ( -- change to hack_passes doneee
 
 -- team id - domain -ps in case of software track ###########################################################
 
+CREATE TABLE track(
+  team_id TEXT PRIMARY KEY,
+  domain_name VARCHAR(100) NOT NULL,
+  problem_statement TEXT NOT NULL
+);
+
 -- we get problem statement domain 
 
 CREATE INDEX idx_hack_passes_leader_email ON hack_passes(leader_email);

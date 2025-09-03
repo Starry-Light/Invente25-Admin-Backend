@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { authMiddleware, requireRole } = require('../auth');
 const axios = require('axios');
+const { createPaymentHeaders } = require('../paymentAuth');
 
 const router = express.Router();
 
@@ -41,7 +42,8 @@ router.post('/',
       const unitPrice = Number(process.env.TECH_PASS_PRICE || 300);
       const amount = (passes.length * unitPrice).toFixed(2);
 
-      // Call payment service
+      // Call payment service with HMAC authentication
+      const paymentHeaders = createPaymentHeaders(process.env.PAYMENT_SERVICE_SECRET);
       await axios.post(process.env.PAYMENT_SERVICE_URL, {
         emailID,
         name,
@@ -49,6 +51,8 @@ router.post('/',
         phoneNumber,
         createdAt: timestamp,
         eventBookingDetails: passes.map(p => p.slots || {})
+      }, {
+        headers: paymentHeaders
       });
 
       // Call receipt service

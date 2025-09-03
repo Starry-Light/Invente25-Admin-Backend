@@ -25,7 +25,8 @@ services:
         max-file: "3"
 
   backend:
-    build: ./backend
+    # build: ./backend
+    image: irfanakthar/invente25-admin-backend:v2
     environment:
       - PORT=4000
       - DATABASE_URL=postgres://invente25:invente25pw@db:5432/invente25
@@ -39,18 +40,43 @@ services:
       - RECEIPT_SERVICE_URL=http://localhost:8080/api/receipt
       - MASTER_PW=itsmeirfan
       - TECH_PASS_PRICE=300
-      - NON_TECH_PASS_PRICE=300
+      - NON_TECH_DEFAULT_PRICE=300
       - WORKSHOP_PRICE=300
     ports:
       - "4000:4000"
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./backend:/usr/src/app
-      - /usr/src/app/node_modules
+    # volumes: 
+      # - ./backend:/usr/src/app # defeats the purpose of the image
+      # - /usr/src/app/node_modules # same reason as above
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    # build: ./frontend
+    image: irfanakthar/invente25-admin-frontend:v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:4000
+      - VITE_TECH_PASS_PRICE=300
+      - VITE_WORKSHOP_PRICE=300
+      - VITE_NON_TECH_DEFAULT_PRICE=300
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { authMiddleware, requireRole } = require('../auth');
 const axios = require('axios');
+const { createPaymentHeaders } = require('../paymentAuth');
 
 const router = express.Router();
 
@@ -91,7 +92,8 @@ router.post('/',
         "1": workshop.workshop_id
       }));
 
-      // Call payment service with workshop parameter
+      // Call payment service with workshop parameter and HMAC authentication
+      const paymentHeaders = createPaymentHeaders(process.env.PAYMENT_SERVICE_SECRET);
       await axios.post(process.env.PAYMENT_SERVICE_URL, {
         emailID,
         name,
@@ -100,6 +102,8 @@ router.post('/',
         createdAt: timestamp,
         eventBookingDetails,
         type: "workshop"
+      }, {
+        headers: paymentHeaders
       });
 
       // Call receipt service (same as cash registration)
