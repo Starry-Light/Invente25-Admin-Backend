@@ -22,6 +22,7 @@ CREATE TABLE events ( -- should contain all events, not just tech events
   name TEXT NOT NULL,
   department_id INT REFERENCES departments(id),
   event_type TEXT NOT NULL DEFAULT 'technical', -- 'technical', 'non-technical', 'workshop'
+  cost DECIMAL(10,2) NULL, -- cost per unit; null for technical, set for non-tech/workshop
   registrations INT DEFAULT 0, -- coz why not? maybe we can remove later or just not use
   created_at TIMESTAMPTZ DEFAULT now()
 );

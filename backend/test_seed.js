@@ -35,31 +35,36 @@ async function run() {
       { name: 'IoT Workshop', dept: 'ECE', external_id: 104 }
     ];
 
-    // Non-technical events
+    // Non-technical events (with per-event costs)
     const nonTechEvents = [
-      { name: 'Cultural Dance', dept: 'COM', external_id: 201 },
-      { name: 'Debate Competition', dept: 'COM', external_id: 202 },
-      { name: 'Photography Contest', dept: 'COM', external_id: 203 }
+      { name: 'Cultural Dance', dept: 'COM', external_id: 201, cost: 150 },
+      { name: 'Debate Competition', dept: 'COM', external_id: 202, cost: 200 },
+      { name: 'Photography Contest', dept: 'COM', external_id: 203, cost: 250 }
     ];
 
-    // Workshop events
+    // Workshop events (with per-workshop costs)
     const workshopEvents = [
-      { name: 'Python Basics', dept: 'WORKSHOP', external_id: 301 },
-      { name: 'React Development', dept: 'WORKSHOP', external_id: 302 },
-      { name: 'Data Science', dept: 'WORKSHOP', external_id: 303 }
+      { name: 'Python Basics', dept: 'WORKSHOP', external_id: 301, cost: 500 },
+      { name: 'React Development', dept: 'WORKSHOP', external_id: 302, cost: 600 },
+      { name: 'Data Science', dept: 'WORKSHOP', external_id: 303, cost: 450 }
     ];
 
-    // Create all events
+    // Create all events (including cost where applicable)
     for (const event of [...techEvents, ...nonTechEvents, ...workshopEvents]) {
       const deptRes = await db.query('SELECT id FROM departments WHERE name = $1', [event.dept]);
       if (deptRes.rows.length > 0) {
         const deptId = deptRes.rows[0].id;
         const eventType = event.dept === 'WORKSHOP' ? 'workshop' : 
                          nonTechEvents.includes(event) ? 'non-technical' : 'technical';
-        
+
+        const cost = (eventType === 'non-technical' || eventType === 'workshop') ? event.cost : null;
+
         await db.query(
-          `INSERT INTO events (external_id, name, department_id, event_type) VALUES ($1, $2, $3, $4) ON CONFLICT (external_id) DO UPDATE SET name=EXCLUDED.name, department_id=EXCLUDED.department_id, event_type=EXCLUDED.event_type`,
-          [event.external_id, event.name, deptId, eventType]
+          `INSERT INTO events (external_id, name, department_id, event_type, cost)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (external_id)
+           DO UPDATE SET name=EXCLUDED.name, department_id=EXCLUDED.department_id, event_type=EXCLUDED.event_type, cost=EXCLUDED.cost`,
+          [event.external_id, event.name, deptId, eventType, cost]
         );
       }
     }
@@ -74,9 +79,10 @@ async function run() {
        const paymentId = uuidv4(); // Use same payment_id for both pass and receipt
        
        // Create receipt FIRST (required for foreign key constraint)
+       const techPrice = Number(process.env.TECH_PASS_PRICE || 300);
        await db.query(
-         `INSERT INTO receipts (payment_id, email, method, phone, amount, paid_on, passGenerated) VALUES ($1, $2, 'cash', $3, 300.00, NOW(), true)`,
-         [paymentId, user.email, user.phone]
+         `INSERT INTO receipts (payment_id, email, method, phone, amount, paid_on, passGenerated) VALUES ($1, $2, 'cash', $3, $4, NOW(), true)`,
+         [paymentId, user.email, user.phone, techPrice]
        );
 
        // Create pass AFTER receipt exists
@@ -113,9 +119,10 @@ async function run() {
        const paymentId = uuidv4(); // Use same payment_id for both pass and receipt
        
        // Create receipt FIRST (required for foreign key constraint)
+       const nonTechPrice = Number(process.env.NON_TECH_DEFAULT_PRICE || 300);
        await db.query(
-         `INSERT INTO receipts (payment_id, email, method, phone, amount, paid_on, passGenerated) VALUES ($1, $2, 'cash', $3, 300.00, NOW(), true)`,
-         [paymentId, user.email, user.phone]
+         `INSERT INTO receipts (payment_id, email, method, phone, amount, paid_on, passGenerated) VALUES ($1, $2, 'cash', $3, $4, NOW(), true)`,
+         [paymentId, user.email, user.phone, nonTechPrice]
        );
 
        // Create pass AFTER receipt exists
@@ -145,9 +152,10 @@ async function run() {
        const paymentId = uuidv4(); // Use same payment_id for both pass and receipt
        
        // Create receipt FIRST (required for foreign key constraint)
+       const workshopPrice = Number(process.env.WORKSHOP_PRICE || 300);
        await db.query(
-         `INSERT INTO receipts (payment_id, email, method, phone, amount, paid_on, passGenerated) VALUES ($1, $2, 'cash', $3, 300.00, NOW(), true)`,
-         [paymentId, user.email, user.phone]
+         `INSERT INTO receipts (payment_id, email, method, phone, amount, paid_on, passGenerated) VALUES ($1, $2, 'cash', $3, $4, NOW(), true)`,
+         [paymentId, user.email, user.phone, workshopPrice]
        );
 
        // Create pass AFTER receipt exists

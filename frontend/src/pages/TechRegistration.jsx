@@ -186,7 +186,10 @@ export default function TechRegistration() {
       </form>
 
       <div className="mt-4 text-sm text-gray-600">
-        Total Amount: ₹{(formData.passes.length * 300).toFixed(2)}
+        {(() => {
+          const unit = Number(import.meta.env.VITE_TECH_PASS_PRICE || 300);
+          return `Total Amount: ₹${(formData.passes.length * unit).toFixed(2)}`;
+        })()}
       </div>
     </div>
   );

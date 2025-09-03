@@ -71,7 +71,20 @@ router.post('/',
 
       const paymentId = uuidv4();
       const timestamp = new Date().toISOString();
-      const amount = (workshops.length * 300).toFixed(2); // 300 per workshop
+      // Compute amount as sum of workshop costs from DB (fallback to env default if missing)
+      const costsRes = await client.query(
+        `SELECT external_id, cost FROM events WHERE external_id = ANY($1) AND event_type = 'workshop'`,
+        [workshopIds]
+      );
+
+      if (costsRes.rows.length !== workshops.length) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'One or more workshops missing costs or invalid' });
+      }
+
+      const defaultWorkshop = Number(process.env.WORKSHOP_PRICE || 300);
+      const totalAmount = costsRes.rows.reduce((sum, row) => sum + Number(row.cost ?? defaultWorkshop), 0);
+      const amount = totalAmount.toFixed(2);
 
       // Prepare eventBookingDetails in the new format
       const eventBookingDetails = workshops.map(workshop => ({

@@ -38,7 +38,8 @@ router.post('/',
 
       const paymentId = uuidv4();
       const timestamp = new Date().toISOString();
-      const amount = (passes.length * 300).toFixed(2); // 300 per pass
+      const unitPrice = Number(process.env.TECH_PASS_PRICE || 300);
+      const amount = (passes.length * unitPrice).toFixed(2);
 
       // Call payment service
       await axios.post(process.env.PAYMENT_SERVICE_URL, {

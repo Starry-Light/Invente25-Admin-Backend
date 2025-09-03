@@ -104,7 +104,11 @@ export default function WorkshopRegistration() {
     }
   };
 
-  const totalAmount = formData.selectedWorkshops.length * 300;
+  const totalAmount = formData.selectedWorkshops.reduce((sum, id) => {
+    const ws = workshops.find(w => w.external_id === id);
+    const fallback = Number(import.meta.env.VITE_WORKSHOP_PRICE || 300);
+    return sum + Number((ws && ws.cost != null) ? ws.cost : fallback);
+  }, 0);
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
@@ -183,7 +187,7 @@ export default function WorkshopRegistration() {
                     <div className="flex-1">
                       <div className="font-medium">{workshop.name}</div>
                       <div className="text-sm text-gray-500">ID: {workshop.external_id}</div>
-                      <div className="text-sm text-gray-500">₹300</div>
+                      <div className="text-sm text-gray-500">₹{workshop.cost ?? Number(import.meta.env.VITE_WORKSHOP_PRICE || 300)}</div>
                     </div>
                   </label>
                 </div>

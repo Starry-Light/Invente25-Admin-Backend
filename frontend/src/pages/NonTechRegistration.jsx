@@ -118,7 +118,11 @@ export default function NonTechRegistration() {
     }
   };
 
-  const totalAmount = formData.selectedEvents.length * 300;
+  const totalAmount = formData.selectedEvents.reduce((sum, id) => {
+    const ev = events.find(e => e.external_id === id);
+    const fallback = Number(import.meta.env.VITE_NON_TECH_DEFAULT_PRICE || 300);
+    return sum + Number((ev && ev.cost != null) ? ev.cost : fallback);
+  }, 0);
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
@@ -198,7 +202,7 @@ export default function NonTechRegistration() {
                       <div className="font-medium">{event.name}</div>
                       <div className="text-sm text-gray-500">ID: {event.external_id}</div>
                       <div className="text-sm text-gray-500">Department: {event.department_name}</div>
-                      <div className="text-sm text-gray-500">₹300</div>
+                      <div className="text-sm text-gray-500">₹{event.cost ?? Number(import.meta.env.VITE_NON_TECH_DEFAULT_PRICE || 300)}</div>
                     </div>
                   </label>
                 </div>

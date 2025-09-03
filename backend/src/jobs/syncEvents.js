@@ -158,17 +158,20 @@ async function syncEvents() {
       }
 
       try {
+        // Determine cost (technical default null)
+        const cost = null;
         // Upsert the event
         await db.query(`
-          INSERT INTO events (external_id, name, department_id, event_type)
-          VALUES ($1, $2, $3, $4)
+          INSERT INTO events (external_id, name, department_id, event_type, cost)
+          VALUES ($1, $2, $3, $4, $5)
           ON CONFLICT (external_id) 
           DO UPDATE SET 
             name = EXCLUDED.name,
             department_id = EXCLUDED.department_id,
-            event_type = EXCLUDED.event_type
+            event_type = EXCLUDED.event_type,
+            cost = EXCLUDED.cost
           `,
-          [event.id, event.attributes.name, deptResult.rows[0].id, 'technical']
+          [event.id, event.attributes.name, deptResult.rows[0].id, 'technical', cost]
         );
         console.log(`Synced event: ${event.attributes.name} - ${event.attributes.department}`);
       } catch (error) {
@@ -190,17 +193,20 @@ async function syncEvents() {
       }
 
       try {
+        // Cost from API or default
+        const cost = typeof event.attributes.cost === 'number' ? event.attributes.cost : Number(process.env.WORKSHOP_PRICE || 300);
         // Upsert the workshop event
         await db.query(`
-          INSERT INTO events (external_id, name, department_id, event_type)
-          VALUES ($1, $2, $3, $4)
+          INSERT INTO events (external_id, name, department_id, event_type, cost)
+          VALUES ($1, $2, $3, $4, $5)
           ON CONFLICT (external_id) 
           DO UPDATE SET 
             name = EXCLUDED.name,
             department_id = EXCLUDED.department_id,
-            event_type = EXCLUDED.event_type
+            event_type = EXCLUDED.event_type,
+            cost = EXCLUDED.cost
           `,
-          [event.id, event.attributes.name, workshopDeptResult.rows[0].id, 'workshop']
+          [event.id, event.attributes.name, workshopDeptResult.rows[0].id, 'workshop', cost]
         );
         console.log(`Synced workshop: ${event.attributes.name}`);
       } catch (error) {
@@ -229,17 +235,20 @@ async function syncEvents() {
       }
 
       try {
+        // Cost from API or default
+        const cost = typeof event.attributes.cost === 'number' ? event.attributes.cost : Number(process.env.NON_TECH_DEFAULT_PRICE || 300);
         // Upsert the non-technical event
         await db.query(`
-          INSERT INTO events (external_id, name, department_id, event_type)
-          VALUES ($1, $2, $3, $4)
+          INSERT INTO events (external_id, name, department_id, event_type, cost)
+          VALUES ($1, $2, $3, $4, $5)
           ON CONFLICT (external_id) 
           DO UPDATE SET 
             name = EXCLUDED.name,
             department_id = EXCLUDED.department_id,
-            event_type = EXCLUDED.event_type
+            event_type = EXCLUDED.event_type,
+            cost = EXCLUDED.cost
           `,
-          [event.id, event.attributes.name, deptResult.rows[0].id, 'non-technical']
+          [event.id, event.attributes.name, deptResult.rows[0].id, 'non-technical', cost]
         );
         console.log(`Synced non-technical event: ${event.attributes.name} - ${event.attributes.department}`);
       } catch (error) {

@@ -48,7 +48,7 @@ router.post('/:passId/slots', authMiddleware, requireRole(['volunteer','dept_adm
     await client.query('BEGIN');
 
     // Verify pass exists (lock row to serialize concurrent ops for this pass)
-    const passRow = (await client.query('SELECT id FROM passes WHERE id = $1 FOR UPDATE', [passId])).rows[0];
+    const passRow = (await client.query('SELECT pass_id FROM passes WHERE pass_id = $1 FOR UPDATE', [passId])).rows[0];
     if (!passRow) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'pass not found' });
@@ -125,7 +125,7 @@ router.post('/:passId/slots', authMiddleware, requireRole(['volunteer','dept_adm
     );
 
     // increment events.registrations
-    await client.query('UPDATE events SET registrations = registrations + 1 WHERE id = $1', [evId]);
+    await client.query('UPDATE events SET registrations = registrations + 1 WHERE external_id = $1', [evId]);
 
     await client.query('COMMIT');
 
@@ -136,62 +136,6 @@ router.post('/:passId/slots', authMiddleware, requireRole(['volunteer','dept_adm
     return res.status(500).json({ error: 'server error' });
   } finally {
     client.release();
-  }
-});
-
-
-// mark_cash_paid endpoint (volunteer marks cash and we call payment-verification service)
-router.post('/:passId/mark-cash-paid', authMiddleware, requireRole(['volunteer','dept_admin','super_admin']), async (req, res) => {
-  const { passId } = req.params;
-  const paymentUrl = process.env.PAYMENT_VERIF_URL;
-  const apiKey = process.env.PAYMENT_VERIF_API_KEY;
-
-  if (!paymentUrl) return res.status(500).json({ error: 'payment verification URL not configured' });
-
-  try {
-    // 1) check local state first (fast idempotent check)
-    const passRow = (await db.query('SELECT verified FROM passes WHERE id=$1', [passId])).rows[0];
-    if (!passRow) return res.status(404).json({ error: 'pass not found' });
-
-    if (passRow.verified) {
-      // Already verified — idempotent success
-      return res.json({ ok: true, message: 'already verified' });
-    }
-
-    // 2) call external payment verification service with an operation id for dedupe
-    const operation_id = randomUUID();
-    const payload = {
-      pass_id: passId,
-      marked_by: req.user.email,
-      timestamp: new Date().toISOString(),
-      operation_id
-    };
-
-    const response = await fetch(paymentUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey || ''}`
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      const txt = await response.text().catch(() => null);
-      return res.status(502).json({ error: 'verification service failed', details: txt });
-    }
-
-    // 3) update local DB only if still unverified (avoid race)
-    const updateRes = await db.query('UPDATE passes SET verified = true WHERE id = $1 AND verified = false RETURNING id', [passId]);
-    if (updateRes.rowCount === 0) {
-      // another process marked it verified concurrently — treat as success // won't really happen
-      return res.json({ ok: true, message: 'already verified by another process' });
-    }
-
-    return res.json({ ok: true, operation_id });
-  } catch (err) {
-    console.error('mark-cash-paid error', err);
-    return res.status(502).json({ error: 'verification service error' });
   }
 });
 
@@ -237,7 +181,7 @@ router.delete('/:passId/slots/:slot_no', authMiddleware, requireRole(['volunteer
     const slotRow = (await db.query(`
       SELECT s.pass_id, s.slot_no, s.event_id, s.attended, e.department_id
       FROM slots s
-      JOIN events e ON s.event_id = e.id
+      JOIN events e ON s.event_id = e.external_id
       WHERE s.pass_id = $1 AND s.slot_no = $2
     `, [passId, slotNo])).rows[0];
 
@@ -258,7 +202,7 @@ router.delete('/:passId/slots/:slot_no', authMiddleware, requireRole(['volunteer
     await db.query('DELETE FROM slots WHERE pass_id = $1 AND slot_no = $2', [passId, slotNo]);
 
     // decrement events.registrations safely
-    await db.query('UPDATE events SET registrations = GREATEST(registrations - 1, 0) WHERE id = $1', [slotRow.event_id]);
+    await db.query('UPDATE events SET registrations = GREATEST(registrations - 1, 0) WHERE external_id = $1', [slotRow.event_id]);
 
     return res.json({ ok: true });
   } catch (err) {

@@ -61,7 +61,21 @@ router.post('/',
 
       const paymentId = uuidv4();
       const timestamp = new Date().toISOString();
-      const amount = (events.length * 300).toFixed(2); // 300 per event
+
+      // Compute amount as sum of event costs from DB (fallback to env default if missing)
+      const costsRes = await client.query(
+        `SELECT external_id, cost FROM events WHERE external_id = ANY($1) AND event_type = 'non-technical'`,
+        [eventIds]
+      );
+
+      if (costsRes.rows.length !== events.length) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'One or more non-technical events missing costs or invalid' });
+      }
+
+      const defaultNonTech = Number(process.env.NON_TECH_DEFAULT_PRICE || 300);
+      const totalAmount = costsRes.rows.reduce((sum, row) => sum + Number(row.cost ?? defaultNonTech), 0);
+      const amount = totalAmount.toFixed(2);
 
       // Prepare eventBookingDetails in the same format as workshops
       const eventBookingDetails = events.map(event => ({
