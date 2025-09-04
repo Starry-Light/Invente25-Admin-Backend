@@ -17,6 +17,7 @@ const techRegistrationRouter = require('./routes/tech-registration');
 const workshopRegistrationRouter = require('./routes/workshop-registration');
 const nonTechRegistrationRouter = require('./routes/non-tech-registration');
 const adminRouter = require('./routes/admin');
+const receiptRouter = require('./routes/receipt');
 
 const app = express();
 app.use(bodyParser.json());
@@ -49,6 +50,7 @@ app.use('/tech-registration', techRegistrationRouter); // tech registration endp
 app.use('/workshop-registration', workshopRegistrationRouter); // workshop registration endpoint
 app.use('/non-tech-registration', nonTechRegistrationRouter); // non-tech registration endpoint
 app.use('/admin', adminRouter); // superadmin-only admin utilities
+app.use('/', receiptRouter); // receipt OCR endpoint (no auth)
 
 app.listen(PORT, () => {
   console.log(`Invente25 admin backend listening on ${PORT}`);

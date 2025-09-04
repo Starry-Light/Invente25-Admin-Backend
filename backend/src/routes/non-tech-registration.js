@@ -60,7 +60,7 @@ router.post('/',
         }
       }
 
-      const paymentId = uuidv4();
+      const paymentID = uuidv4();
       const timestamp = new Date().toISOString();
 
       // Compute amount as sum of event costs from DB (fallback to env default if missing)
@@ -88,7 +88,7 @@ router.post('/',
       await axios.post(process.env.PAYMENT_SERVICE_URL, {
         emailID,
         name,
-        paymentId,
+        paymentID,
         phoneNumber,
         createdAt: timestamp,
         eventBookingDetails
@@ -99,7 +99,7 @@ router.post('/',
       // Call receipt service (same as cash registration)
       await axios.post(process.env.RECEIPT_SERVICE_URL, {
         emailID,
-        paymentId,
+        paymentID,
         paidOn: timestamp,
         method: "Cash",
         amount,
@@ -109,7 +109,7 @@ router.post('/',
       await client.query('COMMIT');
       res.json({ 
         success: true, 
-        paymentId,
+        paymentID,
         amount,
         eventCount: events.length
       });

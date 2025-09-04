@@ -37,7 +37,7 @@ router.post('/',
     // don't need to validate if event IDs exist because frontend will be fatching from my db anyways.
 
 
-      const paymentId = uuidv4();
+      const paymentID = uuidv4();
       const timestamp = new Date().toISOString();
       const unitPrice = Number(process.env.TECH_PASS_PRICE || 300);
       const amount = (passes.length * unitPrice).toFixed(2);
@@ -47,7 +47,7 @@ router.post('/',
       await axios.post(process.env.PAYMENT_SERVICE_URL, {
         emailID,
         name,
-        paymentId,
+        paymentID,
         phoneNumber,
         createdAt: timestamp,
         eventBookingDetails: passes.map(p => p.slots || {})
@@ -58,7 +58,7 @@ router.post('/',
       // Call receipt service
       await axios.post(process.env.RECEIPT_SERVICE_URL, {
         emailID,
-        paymentId,
+        paymentID,
         paidOn: timestamp,
         method: "Cash",
         amount,
@@ -74,7 +74,7 @@ router.post('/',
       await client.query('COMMIT');
       res.json({ 
         success: true, 
-        paymentId,
+        paymentID,
         amount
       });
 
