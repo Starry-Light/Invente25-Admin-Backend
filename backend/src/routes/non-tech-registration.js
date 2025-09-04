@@ -91,7 +91,8 @@ router.post('/',
         paymentID,
         phoneNumber,
         createdAt: timestamp,
-        eventBookingDetails
+        eventBookingDetails,
+        type: "n"
       }, {
         headers: paymentHeaders
       });

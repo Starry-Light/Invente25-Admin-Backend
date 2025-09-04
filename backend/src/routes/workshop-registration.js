@@ -101,7 +101,7 @@ router.post('/',
         phoneNumber,
         createdAt: timestamp,
         eventBookingDetails,
-        type: "workshop"
+        type: "w"
       }, {
         headers: paymentHeaders
       });

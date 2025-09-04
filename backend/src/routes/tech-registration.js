@@ -50,7 +50,8 @@ router.post('/',
         paymentID,
         phoneNumber,
         createdAt: timestamp,
-        eventBookingDetails: passes.map(p => p.slots || {})
+        eventBookingDetails: passes.map(p => p.slots || {}),
+        type: "t"
       }, {
         headers: paymentHeaders
       });
