@@ -102,7 +102,7 @@ export default function NonTechRegistration() {
         events: eventData
       });
 
-      alert(`Non-technical event registration successful! Payment ID: ${response.data.paymentId}\nAmount: ₹${response.data.amount}\nEvents: ${response.data.eventCount}`);
+      alert(`Non-technical event registration successful!`);
       
       // Reset form
       setFormData({
@@ -213,7 +213,7 @@ export default function NonTechRegistration() {
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            {error}
+            {error}<br />Try reloading/logging out and back in
           </div>
         )}
 

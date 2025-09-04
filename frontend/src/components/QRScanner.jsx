@@ -116,7 +116,7 @@ export default function QRScanner({ onResult, fps = 10, qrbox = 250 }) {
           </select>
         )}
       </div>
-       {error && <div className="text-sm text-red-500 mt-2">{error}</div>}
+       {error && <div className="text-sm text-red-500 mt-2">{error}<br />Try reloading/logging out and back in</div>}
     </div>
   );
 }

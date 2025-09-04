@@ -41,7 +41,7 @@ export default function LoginPage() {
             className="w-full border p-2 rounded"
           />
         </div>
-        {err && <div className="text-red-500">{err}</div>}
+        {err && <div className="text-red-500">{err}<br />Try reloading/logging out and back in</div>}
         <div className="flex justify-end">
           <button className="px-4 py-2 bg-blue-600 text-white rounded">
             Login

@@ -116,7 +116,7 @@ export default function AssignSlotForm({ onAssign, existingSlots = [] }) {
             <button className="px-3 py-1 bg-green-600 text-white rounded" onClick={handleAssign} disabled={!eventId || filteredEvents.length === 0}>
               Assign
             </button>
-            {err && <div className="text-red-500 text-sm mt-2">{err}</div>}
+            {err && <div className="text-red-500 text-sm mt-2">{err}<br />Try reloading/logging out and back in</div>}
           </div>
         </div>
       </div>

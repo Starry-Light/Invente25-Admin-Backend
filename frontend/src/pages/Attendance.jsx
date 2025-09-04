@@ -186,7 +186,7 @@ export default function AttendancePage() {
         </div>
 
         <div>
-          {msg && <div className="text-red-500 mb-3">{msg}</div>}
+          {msg && <div className="text-red-500 mb-3">{msg}<br />Try reloading/logging out and back in</div>}
           {loading && <div className="text-sm text-gray-500 mb-3">Loading...</div>}
 
           {pass ? (

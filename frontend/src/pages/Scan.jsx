@@ -155,7 +155,7 @@ export default function ScanPage() {
         </div>
 
         <div>
-          {msg && <div className="text-red-500 mb-3">{msg}</div>}
+          {msg && <div className="text-red-500 mb-3">{msg}<br />Try reloading/logging out and back in</div>}
           {pass ? (
             <div className="bg-white p-4 rounded shadow">
               <h3 className="font-semibold break-words">Pass: {pass.pass_id}</h3>

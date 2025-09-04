@@ -28,7 +28,7 @@ export default function SuperAdminDump() {
   }
 
   if (loading) return <div className="p-6">Loading...</div>
-  if (err) return <div className="p-6 text-red-500">Error: {err}</div>
+  if (err) return <div className="p-6 text-red-500">Error: {err}<br />Try reloading/logging out and back in</div>
 
   const tableOrder = [
     'admins','users','departments','events','receipts','passes','slots','hack_passes','hack_reg_details'

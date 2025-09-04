@@ -16,6 +16,7 @@ import TechRegistrationPage from "./pages/TechRegistration";
 import WorkshopRegistrationPage from "./pages/WorkshopRegistration";
 import NonTechRegistrationPage from "./pages/NonTechRegistration";
 import SuperAdminDump from "./pages/SuperAdminDump";
+import ReceiptTest from "./pages/ReceiptTest";
 
 function RequireAuth({ children, roles }) {
   // simple guard in App; more advanced guard is implemented in pages as needed
@@ -106,6 +107,14 @@ export default function App() {
               element={
                 <RequireAuth roles={["volunteer", "dept_admin", "super_admin"]}>
                   <NonTechRegistrationPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/receipt-test"
+              element={
+                <RequireAuth roles={["super_admin"]}>
+                  <ReceiptTest />
                 </RequireAuth>
               }
             />

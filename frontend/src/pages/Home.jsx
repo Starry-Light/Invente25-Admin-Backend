@@ -76,6 +76,11 @@ export default function Home() {
           administrator.
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="mt-12 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
+        Built with love (for the backend ONLY) and insomnia, by Irfan :)
+      </footer>
     </div>
   );
 }

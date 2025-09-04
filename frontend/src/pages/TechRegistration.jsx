@@ -63,7 +63,9 @@ export default function TechRegistration() {
 
     try {
       const response = await api.post('/tech-registration', formData);
-      alert(`Registration successful! Payment ID: \${response.data.paymentId}\nAmount: ₹\${response.data.amount}`);
+      // we won't get paymentID from response. we'll just insert it from here.
+
+      alert(`Registration successful!`);
       // Reset form
       setFormData({
         emailID: '',
@@ -170,7 +172,7 @@ export default function TechRegistration() {
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            {error}
+            {error}<br />Try reloading/logging out and back in
           </div>
         )}
 

@@ -74,7 +74,7 @@ export default function AnalyticsPage() {
   }, [authAxios, user])
 
   if (loading) return <div className="p-6">Loading analytics...</div>
-  if (err) return <div className="p-6 text-red-500">Error: {err}</div>
+  if (err) return <div className="p-6 text-red-500">Error: {err}<br />Try reloading/logging out and back in</div>
   if (!stats) return <div className="p-6">No analytics available</div>
 
   // Department view
