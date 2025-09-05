@@ -110,8 +110,8 @@ CREATE TABLE hack_reg_details (
   gender VARCHAR(10),
   department VARCHAR(100),
   year_of_study VARCHAR(10),
-  PRIMARY KEY (team_id, email),
-  CONSTRAINT hash_reg_details_team_fk FOREIGN KEY (team_id) REFERENCES hack_passes(team_id) ON DELETE CASCADE -- CHANGE TO HACK_PASSES
+  PRIMARY KEY (team_id, email)
+  --CONSTRAINT hash_reg_details_team_fk FOREIGN KEY (team_id) REFERENCES hack_passes(team_id) ON DELETE CASCADE -- CHANGE TO HACK_PASSES
 );
 
 CREATE INDEX idx_hack_reg_details_email ON hack_reg_details(email);

@@ -23,7 +23,8 @@
     "multer": "^2.0.2",
     "node-cron": "^3.0.2",
     "node-fetch": "^2.7.0",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

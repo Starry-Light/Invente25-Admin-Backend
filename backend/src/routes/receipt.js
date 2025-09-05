@@ -19,8 +19,8 @@ const fileFields = upload.any();
 
 // Track limits
 const TRACK_LIMITS = {
-  software: 30,
-  hardware: 20
+  Software: 30,
+  Hardware: 20
 };
 
 // Pre-compiled regex for payment ID
@@ -130,23 +130,35 @@ router.post('/receipt', fileFields, async (req, res) => {
 
 router.post('/hackathon-receipt', fileFields, async (req, res) => {
   try {
-    // Extract all fields from multipart form-data (no specific structure expected)
-    const body = req.body || {};
+    // --- START: MODIFIED INPUT HANDLING ---
+    if (!req.body.jsonData) {
+      return res.status(400).json({ error: 'jsonData field is required' });
+    }
 
-    // Extract file buffer
+    let body;
+    try {
+      // Parse the JSON string from the jsonData field
+      body = JSON.parse(req.body.jsonData);
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid JSON in jsonData field' });
+    }
+    // --- END: MODIFIED INPUT HANDLING ---
+
+    // Extract file buffer (This part is unchanged)
     const file = (req.files || []).find(f => f.fieldname === 'image' || f.fieldname === 'receipt');
 
     // If paymentID provided and valid, skip OCR
+    // This logic now correctly uses the parsed 'body' object
     if (body.paymentID && PAYMENT_ID_REGEX.test(body.paymentID)) {
       // Check track availability before forwarding to payment service
       if (body.track) {
-        const track = body.track.split('$')[0].toLowerCase(); // Extract track from "Software$Hospitality$BedSys"
+        const track = body.track.split('$')[0].toLowerCase();
         if (track === 'software' || track === 'hardware') {
           const { rows } = await db.query(
             'SELECT COUNT(*) as count FROM hack_passes WHERE track = $1',
             [track]
           );
-          const count = parseInt(rows[0].count);
+          const count = parseInt(rows[0].count, 10);
           const max = TRACK_LIMITS[track];
           
           if (count >= max) {
@@ -157,6 +169,7 @@ router.post('/hackathon-receipt', fileFields, async (req, res) => {
         }
       }
       
+      // The 'body' object contains only the parsed JSON, so the file is not forwarded.
       await forwardToHackathonPaymentService(body);
       return res.json({ success: true, paymentID: body.paymentID, forwarded: true });
     }
@@ -171,7 +184,7 @@ router.post('/hackathon-receipt', fileFields, async (req, res) => {
       return res.status(400).json({ error: 'unsupported file type, only jpg, png and pdf are allowed' });
     }
 
-    // --- START: CORRECTED OCR LOGIC ---
+    // --- OCR LOGIC (Unchanged) ---
     let fullText = '';
     
     if (mime === 'application/pdf') {
@@ -189,7 +202,6 @@ router.post('/hackathon-receipt', fileFields, async (req, res) => {
       const annotation = result.fullTextAnnotation;
       fullText = annotation ? annotation.text : '';
     }
-    // --- END: CORRECTED OCR LOGIC ---
     
     if (!fullText) {
       return res.status(400).json({ error: 'no text detected in file' });
@@ -201,17 +213,18 @@ router.post('/hackathon-receipt', fileFields, async (req, res) => {
     }
     const paymentID = match[0];
 
+    // The payload is built from the parsed 'body' and the OCR'd paymentID
     const payload = { ...body, paymentID };
 
     // Check track availability before forwarding to payment service
     if (payload.track) {
-      const track = payload.track.split('$')[0].toLowerCase(); // Extract track from "Software$Hospitality$BedSys"
+      const track = payload.track.split('$')[0].toLowerCase();
       if (track === 'software' || track === 'hardware') {
         const { rows } = await db.query(
           'SELECT COUNT(*) as count FROM hack_passes WHERE track = $1',
           [track]
         );
-        const count = parseInt(rows[0].count);
+        const count = parseInt(rows[0].count, 10);
         const max = TRACK_LIMITS[track];
         
         if (count >= max) {
@@ -222,6 +235,7 @@ router.post('/hackathon-receipt', fileFields, async (req, res) => {
       }
     }
 
+    // The final 'payload' only contains JSON data and is forwarded correctly.
     await forwardToHackathonPaymentService(payload);
 
     return res.json({ success: true, paymentID, forwarded: true });
