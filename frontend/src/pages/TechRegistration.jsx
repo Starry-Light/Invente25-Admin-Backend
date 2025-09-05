@@ -36,12 +36,6 @@ export default function TechRegistration() {
     });
   };
 
-  const addPass = () => {
-    setFormData({
-      ...formData,
-      passes: [...formData.passes, { slots: {} }]
-    });
-  };
 
   const updateSlot = (passIndex, slotNo, eventId) => {
     const newPasses = [...formData.passes];
@@ -132,13 +126,6 @@ export default function TechRegistration() {
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold">Passes</h2>
-            <button
-              type="button"
-              onClick={addPass}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Add Pass
-            </button>
           </div>
 
           {formData.passes.map((pass, passIndex) => (

@@ -136,7 +136,10 @@ export default function AttendancePage() {
   }, [load])
 
   const markAtt = async (slot_no = null) => {
-    if (!pass || !pass.pass_id) {
+    // For hackathon passes, use team_id; for others, use pass_id
+    const identifier = passType === 'hackathon' ? pass?.team_id : pass?.pass_id;
+    
+    if (!pass || !identifier) {
       setMsg('No pass loaded')
       return
     }
@@ -144,9 +147,9 @@ export default function AttendancePage() {
     setMarking(true)
     try {
       const payload = slot_no ? { slot_no } : {}
-      await authAxios.post(`/scan/${pass.pass_id}/attend`, payload)
+      await authAxios.post(`/scan/${identifier}/attend`, payload)
       // reload for latest state
-      await load(pass.pass_id)
+      await load(identifier)
     } catch (err) {
       setMsg(err?.response?.data?.error || String(err))
       console.error('markAtt error', err)
