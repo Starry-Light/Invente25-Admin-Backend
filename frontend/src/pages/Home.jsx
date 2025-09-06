@@ -1,54 +1,71 @@
 import React from "react";
 import Card from "../components/Card";
 import { useAuth } from "../hooks/useAuth";
+import {
+  QrCodeIcon,
+  UserGroupIcon,
+  ChartBarIcon,
+  CpuChipIcon,
+  WrenchScrewdriverIcon,
+  PuzzlePieceIcon,
+  LockClosedIcon,
+} from "@heroicons/react/24/outline";
 
 export default function Home() {
   const { user } = useAuth();
   const role = user?.role || null;
 
-  // define cards and which roles may see them (null means visible to all authenticated roles)
+  // Define roles to avoid repetition
+  const registrationRoles = ["volunteer", "dept_admin", "super_admin"];
+  const adminRoles = ["dept_admin", "super_admin"];
+
+  // Add an `icon` property to each card
   const cards = [
     {
-      title: "Scan pass",
-      desc: "Scan or paste passId to view slots and assign.",
+      title: "Scan Pass",
+      desc: "Scan QR codes to view slots and participant details.",
       to: "/scan",
-      roles: [  "volunteer", "dept_admin", "super_admin"],
+      roles: registrationRoles,
+      icon: QrCodeIcon,
     },
-
     {
       title: "Attendance",
-      desc: "Mark attendance for events (event admins).",
+      desc: "Mark attendance for specific events and workshops.",
       to: "/attendance",
-      roles: ["event_admin", "dept_admin", "super_admin"],
+      roles: ["event_admin", ...adminRoles],
+      icon: UserGroupIcon,
     },
     {
       title: "Analytics",
-      desc: "Department / college stats (admins).",
+      desc: "View department and college registration statistics.",
       to: "/analytics",
-      roles: ["dept_admin", "super_admin"],
+      roles: adminRoles,
+      icon: ChartBarIcon,
     },
     {
       title: "Tech Registration",
-      desc: "Register technical participants.",
+      desc: "Register participants for technical events.",
       to: "/tech-registration",
-      roles: ["volunteer", "dept_admin", "super_admin"],
+      roles: registrationRoles,
+      icon: CpuChipIcon,
     },
     {
       title: "Workshop Registration",
-      desc: "Register workshop participants.",
+      desc: "Register participants for workshops.",
       to: "/workshop-registration",
-      roles: ["volunteer", "dept_admin", "super_admin"],
+      roles: registrationRoles,
+      icon: WrenchScrewdriverIcon,
     },
     {
       title: "Non-Tech Registration",
-      desc: "Register non-technical participants.",
+      desc: "Register participants for non-technical events.",
       to: "/non-tech-registration",
-      roles: ["volunteer", "dept_admin", "super_admin"],
+      roles: registrationRoles,
+      icon: PuzzlePieceIcon,
     },
   ];
 
-  // filter based on role
-  const visible = cards.filter((c) => {
+  const visibleCards = cards.filter((c) => {
     if (!c.roles) return true;
     if (!role) return false;
     return c.roles.includes(role);
@@ -56,30 +73,52 @@ export default function Home() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      <h2 className="text-xl md:text-2xl font-semibold mb-2">
-        Welcome{user ? `, ${user.email}` : ""}
-      </h2>
-      <p className="text-sm md:text-base text-gray-600">
-        Use the nav to scan tickets, verify cash payments, and manage
-        attendance.
-      </p>
-
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        {visible.map((c) => (
-          <Card key={c.to} title={c.title} desc={c.desc} to={c.to} />
-        ))}
+      {/* Improved Welcome Header */}
+      <div className="mb-8 p-6 bg-white rounded-lg shadow-sm ring-1 ring-gray-900/5">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
+          Welcome back{user ? `, ${user.name || user.email}` : "!"}
+        </h1>
+        <p className="mt-2 text-base text-gray-600">
+          Select an action from the dashboard below to get started.
+        </p>
       </div>
 
-      {visible.length === 0 && (
-        <div className="mt-6 p-4 bg-white rounded shadow text-gray-600">
-          You do not have access to any dashboard actions. Contact an
-          administrator.
+      {/* Card Grid */}
+      {visibleCards.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {visibleCards.map((card) => (
+            <Card
+              key={card.to}
+              title={card.title}
+              desc={card.desc}
+              to={card.to}
+              icon={card.icon}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Improved Empty State */}
+      {visibleCards.length === 0 && user && (
+        <div className="mt-6 rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+             <LockClosedIcon className="h-6 w-6 text-gray-500" />
+          </div>
+          <h3 className="mt-4 text-lg font-medium text-gray-900">No actions available</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Your current role does not have any assigned permissions.
+            <br/>
+            Please contact an administrator if you believe this is an error.
+          </p>
         </div>
       )}
 
       {/* Footer */}
       <footer className="mt-12 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
-        Built with love (for the backend ONLY) and insomnia, by Irfan :)
+        <p>&copy; {new Date().getFullYear()} Invente'25 — All Rights Reserved.</p>
+        <p className="mt-1">
+          Handcrafted with ❤️ by Irfan.
+        </p>
       </footer>
     </div>
   );

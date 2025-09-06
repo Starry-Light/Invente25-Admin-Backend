@@ -4,6 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import AssignSlotForm from '../components/AssignSlotForm';
 import QRScanner from '../components/QRScanner';
+import { 
+  QrCodeIcon, 
+  UserIcon, 
+  CalendarIcon, 
+  ExclamationTriangleIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  TrashIcon,
+  ClipboardDocumentListIcon
+} from '@heroicons/react/24/outline';
 
 /* normalizeDecoded copied from your previous file */
 function normalizeDecoded(raw) {
@@ -44,10 +54,12 @@ export default function ScanPage() {
   const [teamMembers, setTeamMembers] = useState([]);
   const [passType, setPassType] = useState(null);
   const [msg, setMsg] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const doScan = useCallback(async (id) => {
     if (!id) return;
     setMsg(null);
+    setLoading(true);
     try {
       const resp = await authAxios.get(`/scan/${id}`);
       if (!resp || !resp.data || !resp.data.pass) {
@@ -57,6 +69,7 @@ export default function ScanPage() {
         setTeamMembers([]);
         setPassType(null);
         setMsg('No pass data returned');
+        setLoading(false);
         return;
       }
       
@@ -85,8 +98,10 @@ export default function ScanPage() {
       setPassType(null);
       setMsg(err?.response?.data?.error || String(err));
       console.error('doScan error', err);
+    } finally {
+      setLoading(false);
     }
-  }, [authAxios]);
+  }, [authAxios, navigate]);
 
   const onQrResult = useCallback((decodedText) => {
     if (!decodedText) return;
@@ -137,71 +152,202 @@ export default function ScanPage() {
     }
   };
 
+  const getPassTypeColor = (type) => {
+    switch (type) {
+      case 'technical': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'non-technical': return 'bg-green-100 text-green-800 border-green-200';
+      case 'workshop': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'hackathon': return 'bg-orange-100 text-orange-800 border-orange-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
   return (
-    <div className="p-6">
-      <h2 className="text-xl font-semibold mb-4">Scan / Paste Pass ID</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <div>
-          <div className="flex gap-2 mb-2">
-            <input value={passId} onChange={e => setPassId(e.target.value)} placeholder="paste passId here" className="flex-1 border p-2 rounded" />
-            <button onClick={() => {
-              const normalized = normalizeDecoded(passId);
-              setPassId(normalized);
-              doScan(normalized);
-            }} className="px-4 py-2 bg-blue-600 text-white rounded">Check ID</button>
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <QrCodeIcon className="h-8 w-8 text-blue-600" />
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Pass Scanner</h1>
           </div>
-          <div className="text-sm text-gray-500 mb-2">Or use your device camera below to scan QR</div>
-          <QRScanner onResult={onQrResult} stopOnResult={true} />
+          <p className="text-gray-600">Scan QR codes or enter pass IDs to manage technical event slots</p>
         </div>
 
-        <div>
-          {msg && <div className="text-red-500 mb-3">{msg}<br />Try reloading/logging out and back in</div>}
-          {pass ? (
-            <div className="bg-white p-4 rounded shadow">
-              <h3 className="font-semibold break-words">Pass: {pass.pass_id}</h3>
-              <p className="text-sm text-gray-600">
-                Owner: {pass.user_email || pass.leader_email || '—'}
-              </p>
-              <p className="text-sm text-gray-500">
-                Type: {passType?.charAt(0).toUpperCase() + passType?.slice(1) || 'Unknown'}
-              </p>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* Left Column - Scanner */}
+          <div className="space-y-6">
+            {/* Manual Input Card */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <ClipboardDocumentListIcon className="h-5 w-5 text-gray-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Manual Entry</h2>
+              </div>
+              
+              <div className="flex gap-3">
+                <input 
+                  value={passId} 
+                  onChange={e => setPassId(e.target.value)} 
+                  placeholder="Enter pass ID here..." 
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+                <button 
+                  onClick={() => {
+                    const normalized = normalizeDecoded(passId);
+                    setPassId(normalized);
+                    doScan(normalized);
+                  }} 
+                  disabled={loading || !passId.trim()}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  {loading ? 'Checking...' : 'Check ID'}
+                </button>
+              </div>
+            </div>
 
-              {/* Only show technical pass details since others redirect to attendance */}
-              {passType === 'technical' && (
-                <>
-                  <div className="mt-4">
-                    <h4 className="font-semibold">Slots</h4>
-                    <div className="space-y-2 mt-2">
-                      {slots.length === 0 && <div className="text-sm text-gray-500">No slots assigned yet.</div>}
-                      {slots.map(s => (
-                        <div key={s.slot_no} className="p-2 border rounded flex justify-between items-center">
-                          <div>
-                            <div className="text-sm font-medium">Slot {s.slot_no} — {s.event_name || `Event ID ${s.event_id}`}</div>
-                            <div className="text-xs text-gray-500">Attended: {s.attended ? 'Yes' : 'No'}</div>
-                            <div className="text-xs text-gray-400">Assigned: {s.created_at ? new Date(s.created_at).toLocaleString() : '-'}</div>
-                          </div>
-                          <div className="flex gap-2">
-                            {!s.attended && (
-                              <button 
-                                className="px-3 py-1 bg-red-600 text-white rounded"
-                                onClick={() => deleteSlot(s.slot_no)}
-                              >
-                                Delete
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+            {/* QR Scanner Card */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <QrCodeIcon className="h-5 w-5 text-gray-600" />
+                <h2 className="text-lg font-semibold text-gray-900">QR Scanner</h2>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">Use your device camera to scan QR codes</p>
+              
+              <QRScanner onResult={onQrResult} stopOnResult={true} />
+            </div>
+          </div>
+
+          {/* Right Column - Results */}
+          <div className="space-y-6">
+            {/* Error Message */}
+            {msg && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <ExclamationTriangleIcon className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-red-800 font-medium">Error</p>
+                    <p className="text-red-700 text-sm mt-1">{msg}</p>
+                    <p className="text-red-600 text-xs mt-2">Try reloading or logging out and back in</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {loading && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                <div className="flex flex-col items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3"></div>
+                  <p className="text-gray-600">Loading pass information...</p>
+                </div>
+              </div>
+            )}
+
+            {/* Pass Information */}
+            {pass && !loading ? (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                {/* Pass Header */}
+                <div className="border-b border-gray-200 p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <UserIcon className="h-5 w-5 text-gray-600" />
+                        <h3 className="text-lg font-semibold text-gray-900 break-all">
+                          {pass.pass_id}
+                        </h3>
+                      </div>
+                      <p className="text-gray-600 mb-2">
+                        <span className="font-medium">Owner:</span> {pass.user_email || pass.leader_email || '—'}
+                      </p>
+                      <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getPassTypeColor(passType)}`}>
+                        {passType?.charAt(0).toUpperCase() + passType?.slice(1) || 'Unknown'} Pass
+                      </div>
                     </div>
                   </div>
+                </div>
 
-                  <AssignSlotForm onAssign={assignSlot} existingSlots={slots} />
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="text-sm text-gray-500">No pass loaded</div>
-          )}
+                {/* Technical Pass Content */}
+                {passType === 'technical' && (
+                  <div className="p-6">
+                    {/* Slots Section */}
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <CalendarIcon className="h-5 w-5 text-gray-600" />
+                        <h4 className="text-lg font-semibold text-gray-900">Assigned Slots</h4>
+                        <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
+                          {slots.length}
+                        </span>
+                      </div>
+
+                      {slots.length === 0 ? (
+                        <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                          <CalendarIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-gray-600 font-medium">No slots assigned yet</p>
+                          <p className="text-gray-500 text-sm">Use the form below to assign event slots</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {slots.map(s => (
+                            <div key={s.slot_no} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="bg-white px-2 py-1 rounded text-sm font-semibold text-gray-700 border">
+                                      Slot {s.slot_no}
+                                    </span>
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {s.event_name || `Event ID ${s.event_id}`}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-4 text-xs text-gray-600">
+                                    <div className="flex items-center gap-1">
+                                      {s.attended ? (
+                                        <CheckCircleIcon className="h-4 w-4 text-green-600" />
+                                      ) : (
+                                        <XCircleIcon className="h-4 w-4 text-gray-400" />
+                                      )}
+                                      <span>Attended: {s.attended ? 'Yes' : 'No'}</span>
+                                    </div>
+                                    <div>
+                                      Assigned: {s.created_at ? new Date(s.created_at).toLocaleString() : '—'}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {!s.attended && (
+                                  <button 
+                                    className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                    onClick={() => deleteSlot(s.slot_no)}
+                                  >
+                                    <TrashIcon className="h-4 w-4" />
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Assign Slot Form */}
+                    <div className="border-t border-gray-200 pt-6">
+                      <AssignSlotForm onAssign={assignSlot} existingSlots={slots} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : !loading && !pass && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                <div className="text-center">
+                  <QrCodeIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600 font-medium">No pass loaded</p>
+                  <p className="text-gray-500 text-sm">Scan a QR code or enter a pass ID to get started</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
