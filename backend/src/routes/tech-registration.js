@@ -33,8 +33,32 @@ router.post('/',
     try {
       await client.query('BEGIN');
 
+      // Validate that all event IDs exist and are technical events
+      if (eventIds.length > 0) {
+        const eventValidationQuery = `
+          SELECT external_id, department_id, event_type 
+          FROM events 
+          WHERE external_id = ANY($1) AND event_type = 'technical'
+        `;
+        
+        const validEvents = await client.query(eventValidationQuery, [eventIds]);
+        
+        if (validEvents.rows.length !== eventIds.length) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'One or more invalid technical event IDs' });
+        }
 
-    // don't need to validate if event IDs exist because frontend will be fatching from my db anyways.
+        // Check department access permissions for department admins and department volunteers
+        if (req.user.role === 'dept_admin' || (req.user.role === 'volunteer' && req.user.department_id)) {
+          const userDeptId = req.user.department_id;
+          const userDeptEvents = validEvents.rows.filter(event => event.department_id === userDeptId);
+          
+          if (userDeptEvents.length !== eventIds.length) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'You can only register for technical events from your department' });
+          }
+        }
+      }
 
 
       const paymentID = uuidv4();
