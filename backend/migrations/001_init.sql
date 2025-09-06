@@ -30,7 +30,7 @@ CREATE TABLE events ( -- should contain all events, not just tech events
 
 CREATE TABLE receipts (
   payment_id VARCHAR(100) PRIMARY KEY, -- from payment gateway (or uuid4 generated for cash payments)
-  email TEXT REFERENCES users(email),
+  email TEXT,
   method VARCHAR(50), -- online or cash
   phone VARCHAR(20),
   amount DECIMAL(10,2) NOT NULL,

@@ -24,7 +24,7 @@ const TRACK_LIMITS = {
 };
 
 // Pre-compiled regex for payment ID
-const PAYMENT_ID_REGEX = /pay_[A-Za-z0-9]{14,32}/; //maybe change to exactly length 14 later
+const PAYMENT_ID_REGEX = /pay_[A-Za-z0-9]{14}/; //maybe change to exactly length 14 later
 
 // Initialize GCV client using local credentials.json if present or env default
 let visionClient;
