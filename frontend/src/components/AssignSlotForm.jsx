@@ -29,7 +29,13 @@ export default function AssignSlotForm({ onAssign, existingSlots = [] }) {
       const resp = await authAxios.get(`/events`);
       const rows = resp.data.rows || [];
       // Filter to only show technical events
-      const technicalEvents = rows.filter(event => event.event_type === 'technical');
+      let technicalEvents = rows.filter(event => event.event_type === 'technical');
+      
+      // Filter by department for department admins and department volunteers
+      if (user?.role === 'dept_admin' || (user?.role === 'volunteer' && user?.department_id)) {
+        technicalEvents = technicalEvents.filter(event => event.department_id === user.department_id);
+      }
+      
       setEvents(technicalEvents);
     } catch (e) {
       console.error('fetch events error', e);
@@ -39,7 +45,7 @@ export default function AssignSlotForm({ onAssign, existingSlots = [] }) {
     }
   };
   fetchEvents();
-}, [authAxios]);
+}, [authAxios, user]);
 
   // event IDs already assigned to this pass
   const assignedEventIds = useMemo(() => new Set((existingSlots || []).map(s => Number(s.event_id))), [existingSlots]);

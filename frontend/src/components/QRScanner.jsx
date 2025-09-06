@@ -14,9 +14,14 @@ const getResponsiveQrBox = (viewfinderWidth, viewfinderHeight) => {
 };
 
 export default function QRScanner({ onResult, fps = 10 }) {
-  const scannerRef = useRef(null);
+  const scannerRef = useRef(null); // Html5Qrcode instance
+  const scannerActiveRef = useRef(false); // whether we've started scanner
   const onResultRef = useRef(onResult);
   const isInitializedRef = useRef(false);
+
+  // cooldown and last-scan refs
+  const scanCooldownRef = useRef(false);
+  const lastScanRef = useRef({ result: null, timestamp: 0 });
 
   const [isScanning, setIsScanning] = useState(false);
   const [cameras, setCameras] = useState([]);
@@ -36,21 +41,21 @@ export default function QRScanner({ onResult, fps = 10 }) {
       try {
         setStatusMessage('Discovering cameras...');
         const devices = await Html5Qrcode.getCameras();
-        
+
         if (devices && devices.length > 0) {
           setCameras(devices);
-          
+
           // Prefer the rear camera on mobile devices
-          const rearCamera = devices.find(device => 
+          const rearCamera = devices.find(device =>
             /back|rear|environment/i.test(device.label)
           );
           const selectedCamera = rearCamera || devices[0];
-          
+
           setSelectedCameraId(selectedCamera.id);
           setStatusMessage('Camera ready');
           setIsInitialized(true);
           setError(null);
-          
+
           // Auto-start scanning after successful initialization
           setIsScanning(true);
         } else {
@@ -71,20 +76,22 @@ export default function QRScanner({ onResult, fps = 10 }) {
       discoverCameras();
     }
   }, []);
-  
+
   // Effect to manage scanner lifecycle
   useEffect(() => {
-    if (!selectedCameraId || !isInitialized) {
-      return;
-    }
+    if (!selectedCameraId || !isInitialized) return;
+    let mounted = true;
 
     const manageScanner = async () => {
-      // Stop existing scanner if it's running
-      if (scannerRef.current && scannerRef.current.isScanning) {
+      // Stop existing scanner if it's running (our runtime flag)
+      if (scannerRef.current && scannerActiveRef.current) {
         try {
           await scannerRef.current.stop();
         } catch (err) {
           console.error("Error stopping scanner:", err);
+        } finally {
+          try { scannerRef.current.clear(); } catch (e) {}
+          scannerActiveRef.current = false;
         }
       }
 
@@ -106,22 +113,65 @@ export default function QRScanner({ onResult, fps = 10 }) {
               aspectRatio: 1.0,
             },
             (decodedText, decodedResult) => {
-              onResultRef.current(decodedText, decodedResult);
+              // Implement scan cooldown to prevent rapid-fire scanning
+              const now = Date.now();
+              const SCAN_COOLDOWN_MS = 2000; // 2 second cooldown
+
+              // Ignore if cooldown active
+              if (scanCooldownRef.current) return;
+
+              // Ignore exact duplicate within cooldown window
+              if (
+                lastScanRef.current.result === decodedText &&
+                (now - lastScanRef.current.timestamp) < SCAN_COOLDOWN_MS
+              ) {
+                return;
+              }
+
+              // Record this scan and enter cooldown
+              lastScanRef.current = { result: decodedText, timestamp: now };
+              scanCooldownRef.current = true;
+
+              // Call the result handler
+              try {
+                onResultRef.current(decodedText, decodedResult);
+              } catch (err) {
+                console.error("onResult handler error:", err);
+              }
+
+              // Release cooldown after delay
+              setTimeout(() => {
+                scanCooldownRef.current = false;
+              }, SCAN_COOLDOWN_MS);
             },
             (errorMessage) => {
-              // This is for scan failures (no QR code found), which we can ignore
+              // scan failure callback - ignore or log
+              // console.debug('scan error', errorMessage);
             }
           );
+
+          scannerActiveRef.current = true;
+          if (!mounted) {
+            // If component unmounted while starting, stop immediately
+            if (scannerRef.current && scannerActiveRef.current) {
+              scannerRef.current.stop().catch(console.error);
+              try { scannerRef.current.clear(); } catch (e) {}
+              scannerActiveRef.current = false;
+            }
+            return;
+          }
 
           setStatusMessage('');
         } catch (err) {
           console.error("Scanner start error:", err);
-          const errorMessage = err.name === 'NotAllowedError'
+          const errorMessage = err && err.name === 'NotAllowedError'
             ? "Camera permission denied. Please enable camera access in your browser settings."
-            : `Failed to start scanner: ${err.message}`;
+            : `Failed to start scanner: ${err && err.message ? err.message : err}`;
           setError(errorMessage);
           setIsScanning(false);
           setStatusMessage('');
+          // Ensure flags cleaned
+          scannerActiveRef.current = false;
         }
       }
     };
@@ -130,9 +180,13 @@ export default function QRScanner({ onResult, fps = 10 }) {
 
     // Cleanup function
     return () => {
-      if (scannerRef.current && scannerRef.current.isScanning) {
+      mounted = false;
+      if (scannerRef.current && scannerActiveRef.current) {
         scannerRef.current.stop().catch(err => {
           console.error("Failed to stop scanner cleanly:", err);
+        }).finally(() => {
+          try { scannerRef.current.clear(); } catch (e) {}
+          scannerActiveRef.current = false;
         });
       }
     };
@@ -142,7 +196,7 @@ export default function QRScanner({ onResult, fps = 10 }) {
     setIsScanning(false);
     setSelectedCameraId(newCameraId);
     // Scanner will restart automatically due to useEffect dependency
-    setTimeout(() => setIsScanning(true), 100);
+    setTimeout(() => setIsScanning(true), 150);
   };
 
   const toggleScanning = () => {
@@ -202,10 +256,10 @@ export default function QRScanner({ onResult, fps = 10 }) {
           disabled={!selectedCameraId || !!error}
           className={`
             flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 shadow-lg
-            ${!selectedCameraId || error 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : isScanning 
-                ? 'bg-red-500 hover:bg-red-600 focus:ring-red-200' 
+            ${!selectedCameraId || error
+              ? 'bg-gray-400 cursor-not-allowed'
+              : isScanning
+                ? 'bg-red-500 hover:bg-red-600 focus:ring-red-200'
                 : 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-200'
             }
             focus:outline-none focus:ring-4 active:scale-95

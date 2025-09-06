@@ -76,7 +76,7 @@ export default function Home() {
       {/* Improved Welcome Header */}
       <div className="mb-8 p-6 bg-white rounded-lg shadow-sm ring-1 ring-gray-900/5">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-          Welcome back{user ? `, ${user.name || user.email}` : "!"}
+          Welcome back!
         </h1>
         <p className="mt-2 text-base text-gray-600">
           Select an action from the dashboard below to get started.
@@ -117,7 +117,7 @@ export default function Home() {
       <footer className="mt-12 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
         <p>&copy; {new Date().getFullYear()} Invente'25 — All Rights Reserved.</p>
         <p className="mt-1">
-          Handcrafted with ❤️ by Irfan.
+          Made with love (for the backend ONLY) and insomnia, by Irfan :) 
         </p>
       </footer>
     </div>

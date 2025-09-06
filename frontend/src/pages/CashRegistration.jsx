@@ -23,11 +23,17 @@ export default function TechRegistration() {
       .then(res => {
         const allEvents = res.data.rows || [];
         // Filter to only show technical events
-        const technicalEvents = allEvents.filter(event => event.event_type === 'technical');
+        let technicalEvents = allEvents.filter(event => event.event_type === 'technical');
+        
+        // Filter by department for department admins and department volunteers
+        if (user?.role === 'dept_admin' || (user?.role === 'volunteer' && user?.department_id)) {
+          technicalEvents = technicalEvents.filter(event => event.department_id === user.department_id);
+        }
+        
         setEvents(technicalEvents);
       })
       .catch(err => setError('Failed to load events'));
-  }, []);
+  }, [user]);
 
   const handleInputChange = (e) => {
     setFormData({
